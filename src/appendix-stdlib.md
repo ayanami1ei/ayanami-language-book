@@ -1,6 +1,6 @@
 # 附录 A：标准库 API 参考
 
-Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使用 `import "模块名"` 即可导入。`std` 模块是主入口，等价于同时导入 `io`、`string`、`math`，并包含 `Error` 接口、`Result[T, E]` 与 `Option[T]` 枚举。
+Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使用 `import "模块名"` 即可导入。`std` 模块是主入口，等价于同时导入 `io`、`string`、`math`、`complex`、`list`、`linkedlist` 与 `arraylist`，并包含 `Error` 接口、`Result[T, E]` 与 `Option[T]` 枚举。
 
 ## io 模块
 
@@ -104,6 +104,46 @@ fn main() -> int {
     println(s.substring(6, 11))         // "World"
     println(s.to_upper())               // "HELLO WORLD"
     println(s.parse_int())              // 0（非数字）
+    return 0
+}
+```
+
+## complex 模块
+
+`complex` 提供复数类型（`complex.lcl`，`import "complex"`）：
+
+```ayanami
+struct Complex {
+    float re
+    float im
+}
+
+// 便捷构造
+fn complex(float re, float im) -> Complex
+```
+
+运算符（重载）：`+`、`-`、`*`、`/`（复数与 float 标量均可）、一元 `-`、`==` / `!=`。
+
+| 方法 | 说明 |
+|------|------|
+| `z.norm_sq() -> float` | 模平方 a²+b² |
+| `z.abs() -> float` | 模长 √(a²+b²) |
+| `z.conj() -> Complex` | 共轭 a-bi |
+| `z.pow(int exp) -> Complex` | 整数幂（exp >= 0） |
+| `z.to_string() -> String` | 形如 `3+4i` / `1-2i` / `5` / `-3i` |
+
+`Complex` 通过结构匹配实现 `ToString`，因此 `"z=" + z` 可直接拼接。
+
+```ayanami
+import "complex";
+
+fn main() -> int {
+    z = complex(3.0, 4.0)
+    w = complex(1.0, 0 - 2.0)
+    s = z + w
+    println(s.to_string())   // 4+2i
+    println(z.abs())         // 5.0
+    println(z.conj().to_string()) // 3-4i
     return 0
 }
 ```

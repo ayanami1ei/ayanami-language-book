@@ -9,7 +9,8 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `io`：输入输出操作，如 `print`、`println`、`putchar` 和 `getchar`
 - `math`：数学函数，包括整数与浮点运算
 - `string`：字符串处理功能
-- `std`：主入口模块，整合了 `io`、`string`、`math` 并提供 `Error` 接口、`Result[T, E]` 和 `Option[T]`
+- `complex`：复数类型与运算符重载
+- `std`：主入口模块，整合了 `io`、`string`、`math`、`complex` 等，并提供 `Error` 接口、`Result[T, E]` 和 `Option[T]`
 - `list`：集合接口定义
 - `arraylist`：顺序表实现
 - `linkedlist`：链表实现
@@ -134,9 +135,31 @@ fn main() -> int {
 }
 ```
 
+## 复数（complex）
+
+`complex` 模块提供复数类型 `Complex`，支持 `+ - * /`、一元 `-` 与相等比较，
+并可以与 float 标量混合运算：
+
+```ayanami
+import "complex"
+
+fn main() -> int {
+    z = complex(3.0, 4.0)
+    w = complex(1.0, 0 - 2.0)
+    s = z + w
+    println(s.to_string())   // 4+2i
+    println(z.abs())         // 5.0
+    println("z=" + z)        // z=3+4i（ToString 结构匹配）
+    return 0
+}
+```
+
+常用方法有 `norm_sq`（模平方）、`abs`（模长）、`conj`（共轭）、`pow`（整数幂）
+和 `to_string`（形如 `3+4i`），完整列表见附录 A。
+
 ## 标准模块（std）
 
-`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist` 和 `arraylist`，并定义了错误处理相关的接口和类型。
+`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`complex`、`list`、`linkedlist` 和 `arraylist`，并定义了错误处理相关的接口和类型。
 
 ### 错误处理接口
 
