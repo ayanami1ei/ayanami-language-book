@@ -1,0 +1,18 @@
+[book]
+title = "Ayanami 语言教程"
+authors = ["ayanami1ei"]
+description = "Ayanami 编程语言教程：从安装、语法、所有权到综合项目"
+language = "zh-CN"
+src = "src"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/ayanami1ei/ayanami-language-book"
+edit-url-template = "https://github.com/ayanami1ei/ayanami-language-book/edit/main/src/{path}"
+site-url = "/ayanami-language-book/"
+no-section-label = true
+
+[output.html.fold]
+enable = true
+level = 1
