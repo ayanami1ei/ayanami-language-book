@@ -1,142 +1,236 @@
 # 第 11 章 标准库
 
-Ayanami 语言提供了丰富的标准库支持，帮助开发者快速构建功能完备的应用程序。这些库分布在不同的模块中，通过 `import` 语句导入使用。本章将介绍常用的几个标准库模块：`string`、`io`、`math`、`std`、`arraylist` 和 `list`。
+Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。这些模块以 `.lcl` 文件形式预编译并存放于编译器目录下的 `std/` 文件夹中。使用 `import "模块名"` 即可导入所需功能。
 
-## 导入标准库
+## 总览
 
-在 Ayanami 中，使用 `import "模块名"` 来引入标准库中的功能。例如：
+当前标准库包含以下主要模块：
 
-```ayanami
-import "string"
-import "io"
-import "math"
-import "arraylist"
-```
+- `io`：输入输出操作，如 `print`、`println`、`putchar` 和 `getchar`
+- `math`：数学函数，包括整数与浮点运算
+- `string`：字符串处理功能
+- `std`：主入口模块，整合了 `io`、`string`、`math` 并提供 `Error` 接口、`Result[T, E]` 和 `Option[T]`
+- `list`：集合接口定义
+- `arraylist`：顺序表实现
+- `linkedlist`：链表实现
 
-这些语句会自动从标准库目录中查找并加载对应的模块。
+此外，还有一个实验性模块 `mir`，用于插件开发，详情请见附录 A。
 
-## string 模块
+## 输入输出（io）
 
-`string` 模块提供了字符串相关的结构体和方法。其核心类型是 `String`，它是一个包含字符数组和长度的结构体：
-
-```ayanami
-struct String {
-    [char] data
-    int len
-}
-```
-
-你可以使用 `len()` 方法获取字符串长度，用 `index(i)` 获取指定位置的字符。此外，支持字符串拼接操作符 `+` 和比较运算符 `eq` 与 `ne`。
+`io` 模块提供了基本的输入输出功能。现在 `print` 和 `println` 支持多种类型重载，因此你可以直接打印整数、浮点数、布尔值和字符：
 
 ```ayanami
-s = "Hello"
-t = s + " World"
-println(t) // 输出 Hello World
-println("len=" + t.len()) // 输出 len=11
-```
-
-所有基本类型如 `int`、`float`、`char` 和 `bool` 都实现了 `to_string()` 方法，可以方便地转换为字符串：
-
-```ayanami
-println("val: " + 42) // 输出 val: 42
-```
-
-## io 模块
-
-`io` 模块提供了输入输出功能。最常用的函数是 `println()` 和 `print()`，分别用于打印换行和不换行输出。
-
-```ayanami
-println("Hello, world!")
-print("Enter your name: ")
-```
-
-此外，还有 `putchar(int)` 用于输出单个字符，`getchar() -> int` 用于读取一个字符：
-
-```ayanami
-c = getchar()
-putchar(c)
-```
-
-## math 模块
-
-`math` 模块提供了一些常用的数学函数。这些函数接受整数参数，并返回整数结果。
-
-- `abs(x)`：计算绝对值。
-- `min(a, b)`：返回较小值。
-- `max(a, b)`：返回较大值。
-- `clamp(x, min, max)`：将 x 限制在 [min, max] 范围内。
-- `pow(base, exp)`：计算幂次。
-
-```ayanami
-println("max=" + max(3, 7)) // 输出 max=7
-```
-
-## std 模块
-
-`std` 模块定义了错误处理机制的基础接口和类型，例如 `Error` 接口和 `Result[T, E]` 类型。这部分将在下一章详细讲解。
-
-## 集合类型：ArrayList 与 List
-
-Ayanami 提供了动态数组结构 `ArrayList[T]`，它支持添加元素、访问元素以及遍历操作。要使用 `ArrayList`，需要先导入 `arraylist` 模块。
-
-```ayanami
-import "arraylist"
-```
-
-创建一个 `ArrayList[int]` 实例并初始化：
-
-```ayanami
-a = ArrayList[int] { data = null, len = 0, capability = 0 }
-```
-
-然后可以使用 `push()` 添加元素，通过 `index(i)` 访问元素，用 `len()` 获取长度，并调用 `iter(fn)` 对每个元素执行操作。
-
-```ayanami
-a.push(10)
-a.push(20)
-a.push(30)
-a.iter((int x) { println("item: " + x) })
-```
-
-上面这段代码会依次输出：
-
-```
-item: 10
-item: 20
-item: 30
-```
-
-注意：当前编译器对 `ArrayList[String]` 存在已知问题，因此示例中使用了 `ArrayList[int]`。
-
-## 完整示例
-
-下面是一个完整的程序，展示了如何使用上述标准库功能：
-
-```ayanami
-import "string"
-import "io"
-import "math"
-import "arraylist"
+import "io";
 
 fn main() -> int {
-    s = "Hello"
-    t = s + " World"
-    println(t)
-    println("len=" + t.len())
-    println("max=" + max(3, 7))
-    println("val: " + 42)
-
-    a = ArrayList[int] { data = null, len = 0, capability = 0 }
-    a.push(10)
-    a.push(20)
-    a.push(30)
-    a.iter((int x) { println("item: " + x) })
-    return a.index(1) - 20
+    println("hello")     // 字符串
+    println(42)          // 整数
+    println(3.5)         // 浮点
+    println(true)        // 布尔
+    println('x')         // 字符
+    return 0
 }
 ```
 
-这段程序首先构造了一个字符串并打印出来，接着计算两个数的最大值，并将整数转换为字符串进行拼接。随后创建了一个整型数组列表，添加了三个元素，并遍历输出所有元素。最后返回第二个元素减去 20 的结果。
+你仍然可以使用 `putchar` 和 `getchar` 进行字符级别的读写：
 
-## 小结
+```ayanami
+c = getchar();
+putchar(65);   // 输出 'A'
+```
 
-本章介绍了 Ayanami 标准库中常用的模块和功能，包括字符串处理、输入输出、数学运算以及集合类型。这些工具为编写实用程序提供了坚实的基础。下一章我们将深入探讨错误处理机制，了解如何使用 `Result[T, E]` 类型来优雅地处理可能失败的操作。
+## 数学函数（math）
+
+`math` 模块提供常用的数学运算函数，分为整数和浮点版本。
+
+对于整数类型，支持 `abs`、`min`、`max`、`clamp` 和 `pow`：
+
+```ayanami
+import "math";
+
+fn main() -> int {
+    println(min(3, 7))     // 3
+    println(max(3, 7))     // 7
+    println(clamp(5, 1, 10)) // 5
+    println(pow(2, 3))     // 8
+    return 0
+}
+```
+
+对于浮点类型，除了上述函数外还支持 `sqrt`、`floor` 和 `ceil`：
+
+```ayanami
+import "math";
+
+fn main() -> int {
+    println(sqrt(9.0))   // 3.0
+    println(floor(3.7))  // 3.0
+    println(ceil(3.2))   // 4.0
+    return 0
+}
+```
+
+## 字符串处理（string）
+
+`string` 模块提供了丰富的字符串操作方法。我们来逐一介绍一些常用功能。
+
+### 基本操作
+
+```ayanami
+import "string";
+
+fn main() -> int {
+    s = "hello"
+    println(s.len())           // 5
+    println(s.index(0))        // 'h'
+    t = s + " world"
+    println(t)                 // "hello world"
+    return 0
+}
+```
+
+### 字符串分析
+
+```ayanami
+import "string";
+
+fn main() -> int {
+    s = "  Ayanami  "
+    clean = s.trim()
+    println(clean.to_upper())     // AYANAMI
+    println("len=" + clean.len()) // len=7
+
+    csv = "a,b,c"
+    println(csv.contains(","))       // true
+    println(csv.index_of("b"))       // 2
+
+    n = "123".parse_int()
+    println(n + 1)                   // 124
+    return 0
+}
+```
+
+`index_of` 方法在未找到子串时返回 `-1`，这与 C 风格的字符串查找一致。
+
+### 字符工具
+
+每个字符（`char`）也支持分类和转换方法：
+
+```ayanami
+import "string";
+
+fn main() -> int {
+    c = '7'
+    println(c.is_digit())     // true
+    println(c.to_upper())     // '7' (不变)
+    println(c.to_digit())     // 7
+
+    d = 'a'
+    println(d.is_alpha())     // true
+    println(d.is_lower())     // true
+    println(d.to_upper())     // 'A'
+    return 0
+}
+```
+
+## 标准模块（std）
+
+`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist` 和 `arraylist`，并定义了错误处理相关的接口和类型。
+
+### 错误处理接口
+
+`Error` 接口用于表示错误：
+
+```ayanami
+interface Error {
+    fn what(ref self) -> String;
+}
+```
+
+### Result 类型
+
+`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。你可以使用 `try_unwrap` 来提取值。
+
+### Option 类型
+
+`Option[T]` 表示一个可能存在也可能不存在的值：
+
+```ayanami
+enum Option[T] {
+    Some(T),
+    None,
+}
+```
+
+你可以通过 `unwrap_or` 提供默认值，或用 `is_some` 判断是否为 `Some`：
+
+```ayanami
+import "std";
+
+fn or_zero(Option[int] o) -> int {
+    return o.unwrap_or(0)
+}
+
+fn main() -> int {
+    println(or_zero(Option::Some(42)))  // 42
+    println(or_zero(Option::None))      // 0
+    return 0
+}
+```
+
+## 集合（list/arraylist/linkedlist）
+
+标准库提供了三种集合实现：`List[T]` 接口、`ArrayList[T]` 和 `LinkedList[T]`。
+
+### ArrayList
+
+`ArrayList[T]` 是基于数组的顺序表，支持动态扩容。它新增了以下方法：
+
+```ayanami
+import "arraylist";
+
+fn main() -> int {
+    a = ArrayList[int] { data = null, len = 0, capability = 0 }
+    a.push(3)
+    a.push(1)
+    a.set(1, 5)              // 设置索引为1的元素为5
+    println(a.to_string())   // [3, 5]
+    println(a.pop())         // 5
+    return a.len()           // 1
+}
+```
+
+此外，还支持 `is_empty` 和 `clear` 方法：
+
+```ayanami
+fn main() -> int {
+    a = ArrayList[int] { data = null, len = 0, capability = 0 }
+    println(a.is_empty())   // true
+    a.push(1)
+    a.clear()
+    println(a.is_empty())   // true
+    return 0
+}
+```
+
+### LinkedList
+
+`LinkedList[T]` 提供了链式结构的集合实现。你可以使用 `LinkedList::new[T]()` 创建新实例：
+
+```ayanami
+import "linkedlist";
+
+fn main() -> int {
+    l = LinkedList::new[int]()
+    l.push(1)
+    l.push(2)
+    return 0
+}
+```
+
+## 总结
+
+本章介绍了 Ayanami 标准库的最新功能，包括增强的输入输出、数学函数、字符串处理、错误处理机制以及集合类型。所有 API 的详细列表请参见附录 A。
+
+在下一章中，我们将深入探讨 Ayanami 中的错误处理机制，并介绍如何使用 `Result` 和 `Option` 来编写更健壮的程序。
