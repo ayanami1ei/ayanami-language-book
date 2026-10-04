@@ -120,7 +120,7 @@ cargo build --release
 仓库里还提供了常用脚本：
 
 ```bash
-./scripts/check_all.sh         # 版本号 + 文件行数 + 符号地图 + 零告警
+./scripts/check_all.sh         # 版本号 + 文件行数 + 符号地图 + 零告警 + 语言回归 + IR 快照
 ./scripts/package_release.sh   # 构建 tar.gz 与 VSCode 插件
 ```
 

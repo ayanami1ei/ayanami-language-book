@@ -74,6 +74,18 @@ code --install-extension ayanami-0.6.0.vsix
 - `ayanami install pkg.lcl`：在目标机器上从 `.lcl` 生成可执行文件或库；
 - `./scripts/package_release.sh`：维护者用的发布脚本，产出 `tar.gz` 与 `.vsix`。
 
+维护者在提交前运行仓库不变量检查：
+
+```bash
+./scripts/check_all.sh      # 版本 + 行数 + 符号地图 + 零告警 + 语言回归 + IR 快照
+./scripts/regression.sh     # 单独跑语言正/负回归（check_all 已包含）
+./scripts/ir_snapshot.sh    # 校验各阶段 IR 快照（--update 生成）
+```
+
+- `regression.sh`：正例按 `tests/positive_exit.txt` 校验退出码，负例在 `tests/compile_fail/` 校验报错子串；
+- `ir_snapshot.sh`：对比 `tests/ir_snapshots/` 下 ast/hir/mir/lir 各阶段输出，防止优化与降级悄悄漂移；
+- 设置 `AYANAMI_SKIP_REGRESSION=1` 可跳过 `check_all.sh` 中的回归与快照。
+
 `.lcl` 是 Ayanami 的分发格式，标准库就是以预编译 `.lcl` 形式随编译器分发的
 （见 `std/*.lcl`）。导入方式：
 
