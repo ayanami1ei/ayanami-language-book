@@ -1,106 +1,123 @@
 # 第 6 章 枚举与模式匹配
 
-在 Ayanami 中，枚举是一种强大的数据结构，它允许你定义一个类型，该类型可以是多个不同变体中的任意一种。每个变体可以携带数据，也可以不携带。这种结构非常适合表示具有多种可能状态的值。
+在 Ayanami 中，枚举允许你定义一个类型，它的值可以是若干**变体**（variant）中的任意一种。每个变体可以携带数据，也可以不携带。这种结构非常适合表示具有多种可能状态的值。
 
-我们先来看一个常见的枚举定义：
+我们先定义一个描述形状的枚举：
+
+```ayanami
+enum Shape {
+    Circle(int),
+    Square(int),
+    Point,
+}
+```
+
+`Shape` 有三个变体：`Circle(int)` 与 `Square(int)` 各携带一个整数，`Point` 不携带数据。
+
+## 构造与内存布局
+
+构造变体使用 `枚举名::变体名(...)`：
+
+```ayanami
+a = Shape::Circle(3)
+b = Shape::Square(4)
+c = Shape::Point
+```
+
+在内存中，枚举布局为 `{ _tag, _data_变体名, ... }`：`_tag` 是判别值（按声明顺序从 0 开始），`_data_变体名` 存放该变体的载荷：
+
+```ayanami
+a = Shape::Circle(3)
+tag = a._tag          // 0（Circle 是第一个变体）
+r = a._data_Circle._0 // 3
+```
+
+## match 表达式
+
+`match` 是**表达式**：每个分支的值就是整个 `match` 的值，可以直接 `return`，也可以赋给变量。分支按 `_tag` 匹配，必须覆盖所有变体：
+
+```ayanami
+fn describe(Shape s) -> int {
+    return match s {
+        Circle(r) => r * r,
+        Square(a) => a * a,
+        Point => 0,
+    }
+}
+```
+
+如果某个变体没有处理，编译器会报错，这保证了不会遗漏状态。用下划线可以忽略不需要的载荷：
+
+```ayanami
+fn is_circle(Shape s) -> bool {
+    return match s {
+        Circle(_) => true,
+        Square(_) => false,
+        Point => false,
+    }
+}
+```
+
+## 在枚举上定义方法
+
+可以给整个枚举类型写方法，在方法内部用 `match` 分派：
+
+```ayanami
+impl Shape {
+    fn corners(ref self) -> int {
+        return match self {
+            Circle(_) => 0,
+            Square(_) => 4,
+            Point => 1,
+        }
+    }
+}
+```
+
+## 标准库中的泛型枚举
+
+标准库提供了两个常用的泛型枚举（定义在 `std` 模块）：
 
 ```ayanami
 enum Option[T] {
     Some(T),
     None,
 }
-```
 
-这个 `Option` 枚举有两个变体：`Some(T)` 和 `None`。其中，`Some` 带有一个泛型参数 `T`，表示它可以包含任意类型的值；而 `None` 则没有携带任何数据。
-
-你可以这样构造一个 `Option[int]` 类型的值：
-
-```ayanami
-x = Option::Some(42)
-y = Option::None
-```
-
-这里，`x` 是一个带有整数 `42` 的 `Some` 变体，而 `y` 是空的 `None` 变体。
-
-在内存中，枚举的布局由两部分组成：一个是 `_tag` 字段，用于标识当前是哪一个变体；另一个是 `_data_` 字段，存储实际的数据。例如：
-
-```ayanami
-x = Option::Some(42)
-tag = x._tag        // tag 为 0（因为 Some 是第一个变体）
-v = x._data_Some._0 // v 为 42
-```
-
-通过 `_tag` 字段，你可以判断当前枚举的类型；而 `_data_` 字段则保存了具体的值。如果变体是 `None`，那么它不会有任何数据字段。
-
-模式匹配（`match`）是处理枚举的核心机制。它允许你根据不同的变体执行不同的代码逻辑。`match` 是**表达式**：每个分支的值就是整个 `match` 的值，因此可以直接 `return match ...`，也可以赋值给变量。`match` 必须覆盖所有可能的变体：
-
-```ayanami
-fn describe(Option[int] x) -> int {
-    return match x {
-        Some(v) => v,
-        None => 0,
-    }
-}
-```
-
-在这个例子中，如果传入的是 `Some(v)`，整个表达式的值就是 `v`；如果是 `None`，值就是 `0`。注意，在 `match` 中必须对所有可能的变体进行处理，否则编译器会报错。
-
-此外，枚举还可以为特定变体定义方法。比如我们可以给 `Option_Some` 类型添加一个 `get()` 方法：
-
-```ayanami
-impl Option_Some[T] {
-    fn get(ref self) -> T { return self._0 }
-}
-```
-
-然后就可以像这样调用：
-
-```ayanami
-e = Option::Some(10)
-v = e.get() // v 为 10
-```
-
-系统会自动根据当前枚举的 `_tag` 来决定调用哪个方法。这就是所谓的“按标签自动派发”。
-
-为了进一步说明枚举的使用方式，我们来看一个完整的示例程序：
-
-```ayanami
-enum Option[T] {
-    Some(T),
-    None,
-}
-
-impl Option_Some[T] {
-    fn get(ref self) -> T { return self._0 }
-}
-
-fn describe(Option[int] x) -> int {
-    return match x {
-        Some(v) => v,
-        None => 0,
-    }
-}
-
-fn main() -> int {
-    x = Option::Some(42)
-    tag = x._tag
-    v = x._data_Some._0
-    y = describe(Option::None)
-    return tag + v + y - 42
-}
-```
-
-在这个程序中，我们首先定义了一个 `Option` 枚举，并为其 `Some` 变体实现了 `get()` 方法。接着，在 `describe` 函数里使用了 `match` 来处理不同的情况。最后在 `main` 函数中构造了两个值：一个是 `Some(42)`，另一个是 `None`。程序通过访问 `_tag` 和 `_data_` 字段来获取内部信息，并将这些值参与计算后返回。
-
-除了 `Option` 之外，Ayanami 标准库还提供了另一个常用的枚举类型：`Result[T, E]`。它通常用于表示操作可能成功或失败的情况。虽然我们会在错误处理章节详细介绍其用法，但你可以简单理解为：
-
-```ayanami
 enum Result[T, E] {
     Ok(T),
     Err(E),
 }
 ```
 
-这代表一个结果要么是成功的值 `T`，要么是一个错误信息 `E`。
+`Option[T]` 表示“可能有值”，用 `Option::Some(v)` / `Option::None()` 构造；`Result[T, E]` 表示“成功或失败”，用 `Result::Ok(v)` / `Result::Err(e)` 构造（详细用法见第 12 章）。
 
-通过本章的学习，你应该已经掌握了如何定义和使用枚举、如何利用模式匹配来处理不同变体，并了解了如何为特定变体编写方法。下一章我们将介绍接口与动态派发机制，进一步拓展你的程序设计能力。
+`Option` 提供了 `unwrap_or(default)` 与 `is_some()` 方法：
+
+```ayanami
+import "std"
+
+fn find(int x) -> Option[int] {
+    if x > 0 { return Option::Some(x) }
+    return Option::None()
+}
+
+fn main() -> int {
+    println(find(5).unwrap_or(0))    // 5
+    println(find(-1).unwrap_or(42))  // 42
+    return 0
+}
+```
+
+> **当前限制**：泛型枚举载荷的 `match` 与 `Result.try_unwrap()` 因编译器 bug 暂不可用
+> （主仓 issue #68 / #69）。修复前请使用 `Option` 的辅助方法，或通过 `_tag` / `_data_变体`
+> 字段访问结果；非泛型枚举的 `match` 不受影响。
+
+## 小结
+
+- 用 `enum` 定义变体；`枚举名::变体名(...)` 构造；
+- `_tag` 是判别值，`_data_变体名` 是载荷；
+- `match` 是表达式，分支必须覆盖所有变体；
+- 标准库的 `Option` / `Result` 是泛型枚举，泛型 `match` 修复前用辅助方法或字段访问。
+
+下一章我们将介绍接口与动态派发机制。

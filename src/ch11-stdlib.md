@@ -9,6 +9,7 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `io`：输入输出操作，如 `print`、`println`、`putchar` 和 `getchar`
 - `math`：数学函数，包括整数与浮点运算
 - `string`：字符串处理功能
+- `panic`：运行时错误（`#panic` 宏与越界检查，见第 12 章）
 - `std`：主入口模块，整合了 `io`、`string`、`math` 等，并提供 `Error` 接口、`Result[T, E]` 和 `Option[T]`
 - `list`：集合接口定义
 - `arraylist`：顺序表实现
@@ -122,7 +123,7 @@ fn main() -> int {
 }
 ```
 
-`index_of` 方法在未找到子串时返回 `-1`，这与 C 风格的字符串查找一致。
+`index_of` 方法在未找到子串时返回 `-1`。`s.index(i)`（或 `s[i]`）越界会 panic（退出码 101）；`parse_int` 是前缀式解析（跳过前导空白与正负号，遇到非数字停止），要求整个串合法请用 `is_int()`。
 
 ### 字符工具
 
@@ -147,7 +148,7 @@ fn main() -> int {
 
 ## 标准模块（std）
 
-`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist` 和 `arraylist`，并定义了错误处理相关的接口和类型。
+`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist`、`arraylist` 和 `panic`，并定义了错误处理相关的接口和类型。
 
 ### 错误处理接口
 
@@ -161,7 +162,7 @@ interface Error {
 
 ### Result 类型
 
-`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。你可以使用 `try_unwrap` 来提取值。
+`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符可以传播错误；`try_unwrap` 与泛型枚举的 `match` 当前受编译器 bug 影响（见第 12 章）。
 
 ### Option 类型
 
@@ -185,10 +186,12 @@ fn or_zero(Option[int] o) -> int {
 
 fn main() -> int {
     println(or_zero(Option::Some(42)))  // 42
-    println(or_zero(Option::None))      // 0
+    println(or_zero(Option::None()))    // 0
     return 0
 }
 ```
+
+注意：`unwrap_or` 与 `is_some` 会消费 `Option`，同一个值不要连续调用（每次用新的函数调用结果）。
 
 ## 集合（list/arraylist/linkedlist）
 
@@ -234,6 +237,8 @@ fn main() -> int {
 
 集合对元素类型**没有约束**：任意类型（包括未实现 `ToString` 的结构体、枚举）都可以放入；
 只有调用 `to_string()` 时才要求元素实现 `ToString`。
+
+集合支持索引语法 `a[i]`（等价于 `a.index(i)`）。越界访问（`a.index(5)` 或 `a[5]`）、空表 `pop()` 都会在运行时 panic（退出码 101），错误位置指向你的调用行。`iter` 的回调不能捕获外部变量，但可以调用全局函数。
 
 ### LinkedList
 

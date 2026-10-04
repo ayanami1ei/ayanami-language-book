@@ -1,6 +1,6 @@
 # 附录 A：标准库 API 参考
 
-Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使用 `import "模块名"` 即可导入。`std` 模块是主入口，等价于同时导入 `io`、`string`、`math`、`list`、`linkedlist` 与 `arraylist`，并包含 `Error` 接口、`Result[T, E]` 与 `Option[T]` 枚举。
+Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使用 `import "模块名"` 即可导入。`std` 模块是主入口，等价于同时导入 `io`、`string`、`math`、`list`、`linkedlist`、`arraylist` 与 `panic`，并包含 `Error` 接口、`Result[T, E]` 与 `Option[T]` 枚举。
 
 ## io 模块
 
@@ -66,7 +66,7 @@ struct String {
 | 方法 | 说明 |
 |------|------|
 | `s.len() -> int` | 长度 |
-| `s.index(int i) -> char` | 按索引访问字符（也可写 `s.data[i]`） |
+| `s.index(int i) -> char` | 按索引访问字符（也可写 `s[i]`；越界 panic 101） |
 | `s.add(ref String other) -> String` | 拼接（`+` 运算符） |
 | `s.eq(ref String other) -> bool` | 相等比较（`==`） |
 | `s.ne(ref String other) -> bool` | 不等比较（`!=`） |
@@ -77,12 +77,12 @@ struct String {
 | `s.contains(ref String) -> bool` | 是否包含子串 |
 | `s.index_of(ref String) -> int` | 子串位置（未找到 -1） |
 | `s.starts_with(ref String) -> bool` / `s.ends_with(ref String) -> bool` | 前缀/后缀 |
-| `s.substring(int start, int end) -> String` | 区间子串（越界自动夹取） |
+| `s.substring(int start, int end) -> String` | 区间 `[start, end)`，越界自动夹取 |
 | `s.trim() -> String` | 去首尾空白 |
 | `s.to_upper() -> String` / `s.to_lower() -> String` | 大小写转换 |
 | `s.repeat(int n) -> String` | 重复拼接 |
-| `s.parse_int() -> int` | 十进制解析（非法输入返回 0） |
-| `s.is_int() -> bool` | 是否为合法十进制整数 |
+| `s.parse_int() -> int` | 前缀式解析：跳过前导空白/正负号，遇非数字停止 |
+| `s.is_int() -> bool` | 整个串是否为合法十进制整数 |
 
 ### char 工具方法
 
@@ -129,9 +129,15 @@ enum Result[T, E] {
 }
 ```
 
+构造：`Result::Ok(v)` / `Result::Err(e)`（泛型实参由返回类型推导）。
+
 | 方法 | 说明 |
 |------|------|
-| `try_unwrap(self) -> T` | 提取成功值；遇到 `Err` 时返回 0 |
+| `try_unwrap(self) -> T` | 提取成功值；遇到 `Err` 时返回 0（当前受编译器 bug 影响，见下） |
+
+> **当前限制**：泛型枚举载荷的 `match` 与 `try_unwrap()` 因编译器 bug 暂不可用
+> （主仓 issue #68 / #69）；修复前用 `_tag` / `_data_Ok._0` / `_data_Err._0` 字段访问。
+> `?` 错误传播可以正常使用。
 
 ### Option[T]
 
@@ -142,10 +148,37 @@ enum Option[T] {
 }
 ```
 
+构造：`Option::Some(v)` / `Option::None()`。
+
 | 方法 | 说明 |
 |------|------|
 | `unwrap_or(self, T default) -> T` | `Some` 时返回内部值，否则返回 `default` |
 | `is_some(self) -> bool` | 是否为 `Some` |
+
+两个方法都会消费 `self`，同一个值不要连续调用。
+
+## panic 模块
+
+`import "panic"` 提供运行时错误支持：
+
+| 形式 | 说明 |
+|------|------|
+| `#panic("消息")` | 函数宏：在调用点展开，自动带上行号/列号/文件名 |
+| `panic_at(line, col, file, msg)` | 底层函数（宏与库内部使用） |
+| `panic_bounds_at(line, col, file, index, len)` | 越界专用（集合/字符串边界检查使用） |
+
+运行时输出到 stderr，退出码 **101**：
+
+```ayanami
+import "panic"
+
+fn main() -> int {
+    #panic("boom")     // thread 'main' panicked at main.aya:4:5: boom
+    return 0
+}
+```
+
+标准库在越界/空表时自动 panic，位置指向调用行（`arr[i]`、`a.index(i)`、`s[i]`、空表 `a.pop()`）。语言没有 `try/catch`，panic 不可捕获；可恢复的错误请使用 `Result`。
 
 ## 构造函数（显式泛型调用）
 
@@ -197,13 +230,13 @@ struct ArrayList[T] {
 |------|------|
 | `ArrayList::new[T]()` / `ArrayList::with_capacity[T](n)` | 构造空表 / 预分配容量 |
 | `push(ref mut self, T val)` | 追加元素，自动扩容 |
-| `index(ref self, int i) -> T` | 按下标读取 |
-| `set(ref mut self, int i, T v)` | 按下标写入 |
-| `pop(ref mut self) -> T` | 弹出末元素（调用方保证非空） |
+| `index(ref self, int i) -> T` | 按下标读取（或 `a[i]`；越界 panic 101） |
+| `set(ref mut self, int i, T v)` | 按下标写入（越界 panic 101） |
+| `pop(ref mut self) -> T` | 弹出末元素（空表 panic 101） |
 | `len(ref self) -> int` | 元素个数 |
 | `is_empty(ref self) -> bool` | 是否为空 |
 | `clear(ref mut self)` | 清空（保留底层缓冲） |
-| `iter(ref self, fn(T) f)` | 依次调用 `f` |
+| `iter(ref self, fn(T) f)` | 依次调用 `f`（回调不能捕获外部变量） |
 | `to_string(ref self) -> String` | 形如 `[1, 2, 3]`（要求 `T: ToString`） |
 
 ### linkedlist 模块
@@ -227,7 +260,7 @@ struct LinkedList[T] {
 | `iter(ref self, fn(T) f)` | 依次调用 `f` |
 | `to_string(ref self) -> String` | 字符串形式（要求 `T: ToString`） |
 
-注意：`pop()` 调用方需自行保证非空；`clear()` 保留底层缓冲。
+注意：越界与空表 `pop` 会运行时 panic（退出码 101，位置指向调用行）；`clear()` 保留底层缓冲。
 
 ## mir 模块（实验性）
 
@@ -235,4 +268,4 @@ struct LinkedList[T] {
 
 ## 更新源
 
-本附录以主仓库 [`std/README.md`](https://github.com/ayanami1ei/Ayanami-language/blob/rust/std/README.md) 为准，标准库更新时请同步该文件。
+本附录以标准库子仓 [Ayanami-std](https://github.com/ayanami1ei/Ayanami-std) 的 `README.md` 与 [`docs/`](https://github.com/ayanami1ei/Ayanami-std/tree/main/docs)（分模块教程式文档）为准，标准库更新时请同步。
