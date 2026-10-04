@@ -35,7 +35,7 @@ impl float {
 
 ## 结构匹配
 
-Ayanami 支持一种自动实现机制：只要某个类型拥有与接口中一致的方法签名（包括名称和参数），它就会被自动视为实现了该接口。比如：
+Ayanami 的接口采用 **Go 式结构匹配**：只要某个类型拥有与接口一致的方法签名（方法名、形参、返回类型齐全），它就被自动视为实现了该接口。无需（也不支持）`impl Point: Drawable {}` 这类显式声明，且 `self` 关键字不参与匹配。例如：
 
 ```ayanami
 struct Point {
@@ -54,7 +54,7 @@ impl Point {
 }
 ```
 
-在这个例子中，`Point` 类型没有显式地写 `impl Point: Drawable {}`，但由于它已经实现了 `draw` 和 `get_id` 方法，因此它自动满足了 `Drawable` 接口的要求——这就是结构匹配。
+在这个例子中，`Point` 类型没有也不需要写 `impl Point: Drawable {}`，因为它已经实现了 `draw` 和 `get_id` 方法，所以自动满足 `Drawable` 接口的要求——这就是结构匹配。
 
 ## 动态派发
 

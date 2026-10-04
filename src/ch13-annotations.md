@@ -203,7 +203,7 @@ fn main() -> int {
     while n < 3 {
         n = n + 1
     }
-    return on_linux() + dec(5) - 4 + abs2(0 - 3) - 3 + id(1) - 1 + add(1, 2) - 3 + n - 3
+    return on_linux() + dec(5) - 4 + abs2(-3) - 3 + id(1) - 1 + add(1, 2) - 3 + n - 3
 }
 ```
 

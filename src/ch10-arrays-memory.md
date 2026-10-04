@@ -90,6 +90,19 @@ fn main() -> int {
 
 在这个例子中，`main()` 函数创建了一个数组 `a` 并修改了它的元素。随后调用 `make()` 函数，该函数内部也创建并使用了两个数组。最后通过 `__ayanami_live_allocs()` 检查是否还有未释放的内存块。
 
-请特别注意：目前版本中不支持 `[String]` 数组或 `ArrayList[String]` 类型，因为这些存在已知问题。如果你需要处理字符串集合，请考虑使用单个 `String` 累积拼接或者整数数组来代替。
+数组元素可以是任意类型，包括结构体。例如字符串数组：
+
+```ayanami
+import "io"
+import "string"
+
+fn main() -> int {
+    names = ["Alice", "Bob"]
+    println(names[0])   // Alice
+    return 0
+}
+```
+
+离开作用域时，数组中的每个字符串也会被递归释放。
 
 下一章我们将介绍 Ayanami 的标准库，包括输入输出、数学运算以及常用的数据结构等实用功能。

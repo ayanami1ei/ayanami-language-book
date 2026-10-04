@@ -45,7 +45,7 @@ fn outer(int x) -> Result[int, int] {
 ```ayanami
 fn main() -> int {
     a = outer(1)
-    b = outer(0 - 5)
+    b = outer(-5)
     match a {
         Ok(v) => println("ok: " + v),
         Err(e) => println("err: " + e),
@@ -54,7 +54,7 @@ fn main() -> int {
 }
 ```
 
-在这个例子中，我们首先调用了 `outer` 函数两次。第一次传入的是正数 1，第二次是 `0 - 5`（即 -5，Ayanami 里负数直接量要写成减法表达式）。然后使用 `match` 来判断每个结果是成功还是失败，并分别输出不同的信息。
+在这个例子中，我们首先调用了 `outer` 函数两次。第一次传入的是正数 1，第二次是 `-5`。然后使用 `match` 来判断每个结果是成功还是失败，并分别输出不同的信息。
 
 ## 自定义错误类型
 
