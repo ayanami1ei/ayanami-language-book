@@ -18,5 +18,6 @@
 - [第 14 章 生命周期与 follow_with](ch14-lifetimes.md)
 - [第 15 章 FFI、内联汇编与宏](ch15-ffi-asm-macros.md)
 - [第 16 章 工具链与发布](ch16-toolchain.md)
-- [第 17 章 综合项目：表达式计算器](ch17-project.md)
+- [第 17 章 测试](ch17-testing.md)
+- [第 18 章 综合项目：表达式计算器](ch18-project.md)
 - [附录 A：标准库 API 参考](appendix-stdlib.md)
