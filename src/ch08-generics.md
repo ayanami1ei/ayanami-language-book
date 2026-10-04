@@ -58,18 +58,29 @@ struct Box[T] { T value }
 
 这个 `Box` 结构体可以存储任意类型的值，并且在使用时会根据具体类型生成对应的代码。
 
-此外，标准库中已经提供了许多泛型结构体的例子，比如 `ArrayList[T: ToString]`。它表示一个可以存储实现了 `ToString` 接口的元素的动态数组：
+此外，标准库中已经提供了许多泛型结构体的例子，比如 `ArrayList[T]`（动态数组，元素类型无约束）：
 
 ```ayanami
 import "arraylist"
 fn main() -> int {
-    list = ArrayList[int] { data = null, len = 0, capability = 0 }
-    list.push(42)      // 自动可变借用
-    return list.len()  // 自动借用
+    list = ArrayList::new[int]()   // 显式泛型实参
+    list.push(42)
+    return list.len()
 }
 ```
 
-在这个例子中，我们创建了一个 `ArrayList[int]` 类型的列表，并向其中添加了整数元素。
+### 显式泛型实参与推断
+
+命名空间函数可以用显式泛型实参调用：`ns.fn[T](args)`。省略时，编译器会根据后续用法推断类型：
+
+```ayanami
+a = ArrayList::new()      // T 暂未确定
+a.push(7)                 // 由 push 推断 T = int
+
+b = ArrayList::with_capacity[String](8)   // 显式指定
+```
+
+标准库构造函数都采用这种形式，详见第 11 章与附录 A。
 
 ## 单态化
 

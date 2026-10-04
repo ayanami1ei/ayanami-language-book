@@ -90,6 +90,17 @@ fn main() -> int {
 }
 ```
 
+### 构造字符串
+
+字符串字面量会直接创建 `String`；标准库还提供了构造函数：
+
+```ayanami
+s1 = String::empty()          // 空串
+s2 = String::new()            // 等价于 empty
+buf = ['h', 'i']
+s3 = String::new(buf, 2)      // 从拥有所有权的 [char] 缓冲构造
+```
+
 ### 字符串分析
 
 ```ayanami
@@ -185,27 +196,34 @@ fn main() -> int {
 
 ### ArrayList
 
-`ArrayList[T]` 是基于数组的顺序表，支持动态扩容。它新增了以下方法：
+`ArrayList[T]` 是基于数组的顺序表，支持动态扩容。标准库提供了构造函数：
 
 ```ayanami
 import "arraylist";
 
 fn main() -> int {
-    a = ArrayList[int] { data = null, len = 0, capability = 0 }
+    a = ArrayList::new[int]()      // 空表
     a.push(3)
     a.push(1)
-    a.set(1, 5)              // 设置索引为1的元素为5
+    a.set(1, 5)              // 设置索引为 1 的元素为 5
     println(a.to_string())   // [3, 5]
     println(a.pop())         // 5
     return a.len()           // 1
 }
 ```
 
-此外，还支持 `is_empty` 和 `clear` 方法：
+需要预分配容量时用 `ArrayList::with_capacity[T](n)`；泛型实参也可以省略，由后续用法推断：
+
+```ayanami
+b = ArrayList::new()
+b.push("hi")            // 由 push 推断 T = String
+```
+
+此外还支持 `is_empty` 和 `clear` 方法：
 
 ```ayanami
 fn main() -> int {
-    a = ArrayList[int] { data = null, len = 0, capability = 0 }
+    a = ArrayList::new[int]()
     println(a.is_empty())   // true
     a.push(1)
     a.clear()
@@ -214,7 +232,8 @@ fn main() -> int {
 }
 ```
 
-元素类型不限于 `int`：只要实现了 `ToString`，`ArrayList[String]` 也可以正常使用。
+集合对元素类型**没有约束**：任意类型（包括未实现 `ToString` 的结构体、枚举）都可以放入；
+只有调用 `to_string()` 时才要求元素实现 `ToString`。
 
 ### LinkedList
 

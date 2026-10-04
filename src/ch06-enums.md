@@ -32,18 +32,18 @@ v = x._data_Some._0 // v 为 42
 
 通过 `_tag` 字段，你可以判断当前枚举的类型；而 `_data_` 字段则保存了具体的值。如果变体是 `None`，那么它不会有任何数据字段。
 
-模式匹配（`match`）是处理枚举的核心机制。它允许你根据不同的变体执行不同的代码逻辑。`match` 是一个表达式，这意味着它可以有返回值，并且必须覆盖所有可能的变体：
+模式匹配（`match`）是处理枚举的核心机制。它允许你根据不同的变体执行不同的代码逻辑。`match` 是**表达式**：每个分支的值就是整个 `match` 的值，因此可以直接 `return match ...`，也可以赋值给变量。`match` 必须覆盖所有可能的变体：
 
 ```ayanami
 fn describe(Option[int] x) -> int {
-    match x {
-        Some(v) => return v,
-        None => return 0,
+    return match x {
+        Some(v) => v,
+        None => 0,
     }
 }
 ```
 
-在这个例子中，如果传入的是 `Some(v)`，就返回这个值；如果是 `None`，则返回 `0`。注意，在 `match` 中必须对所有可能的变体进行处理，否则编译器会报错。
+在这个例子中，如果传入的是 `Some(v)`，整个表达式的值就是 `v`；如果是 `None`，值就是 `0`。注意，在 `match` 中必须对所有可能的变体进行处理，否则编译器会报错。
 
 此外，枚举还可以为特定变体定义方法。比如我们可以给 `Option_Some` 类型添加一个 `get()` 方法：
 
@@ -75,9 +75,9 @@ impl Option_Some[T] {
 }
 
 fn describe(Option[int] x) -> int {
-    match x {
-        Some(v) => return v,
-        None => return 0,
+    return match x {
+        Some(v) => v,
+        None => 0,
     }
 }
 

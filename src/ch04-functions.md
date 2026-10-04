@@ -31,11 +31,13 @@ fn square(int x) -> int {
 ```ayanami
 fn abs(int x) -> int {
     if x < 0 {
-        return 0 - x;
+        return -x;
     }
     return x;
 }
 ```
+
+`main` 函数比较特殊：`fn main() -> int` 末尾可以省略 `return`，此时缺省返回 0（C 语义，显式 `return` 优先）。其他非 void 函数必须显式返回；void 函数里可以用 `return;` 提前结束。
 
 ## 无返回值函数
 
@@ -110,7 +112,7 @@ import "string"
 import "arraylist"
 
 fn main() -> int {
-    list = ArrayList[int] { data = null, len = 0, capability = 0 };
+    list = ArrayList::new[int]();
     list.push(1);
     list.push(2);
     list.iter((int x) { println(x.to_string()); });

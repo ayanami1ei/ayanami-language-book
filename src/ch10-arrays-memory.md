@@ -90,19 +90,27 @@ fn main() -> int {
 
 在这个例子中，`main()` 函数创建了一个数组 `a` 并修改了它的元素。随后调用 `make()` 函数，该函数内部也创建并使用了两个数组。最后通过 `__ayanami_live_allocs()` 检查是否还有未释放的内存块。
 
-数组元素可以是任意类型，包括结构体。例如字符串数组：
+数组元素可以是任意类型：字符串、结构体、枚举都行。例如：
 
 ```ayanami
 import "io"
 import "string"
 
+struct Point {
+    int x
+    int y
+}
+
 fn main() -> int {
     names = ["Alice", "Bob"]
     println(names[0])   // Alice
+
+    pts = [Point { x = 1, y = 2 }, Point { x = 3, y = 4 }]
+    println(pts[1].x)   // 3
     return 0
 }
 ```
 
-离开作用域时，数组中的每个字符串也会被递归释放。
+聚合元素（结构体/枚举）会按 LLVM 布局分配；离开作用域时，数组中的元素会被递归释放。
 
 下一章我们将介绍 Ayanami 的标准库，包括输入输出、数学运算以及常用的数据结构等实用功能。

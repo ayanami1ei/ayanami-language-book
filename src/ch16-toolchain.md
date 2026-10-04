@@ -14,6 +14,7 @@
 | `ayanami run [file/proj]` | 构建并运行 |
 | `ayanami install <lcl>` | 从 `.lcl` 构建目标产物 |
 | `ayanami defs <file>` | 输出符号定义列表（JSON） |
+| `ayanami types <file>` | 输出 HIR 推断的变量类型（JSON，供编辑器类型提示） |
 | `ayanami clean` | 清除 `build/` 目录 |
 
 构建产物默认放在项目根目录的 `build/` 下。

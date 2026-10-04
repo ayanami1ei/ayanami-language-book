@@ -59,6 +59,29 @@ fn main() -> int {
 }
 ```
 
+### 引用的自动解引用
+
+在值上下文（运算、比较、传值形参、返回）中，`ref T` 会自动读出 `T`；对 `ref mut T` 赋值会穿透引用写回被借用的变量；写入不可变的 `ref T` 会报错：
+
+```ayanami
+fn bump(ref mut int i) {
+    i = i + 1            // 穿透写回
+}
+
+fn add_one(int v) -> int { return v + 1 }
+
+fn via_value(ref mut int i) -> int {
+    return add_one(i)    // 值上下文自动读出
+}
+
+fn main() -> int {
+    x = 0
+    bump(x)              // x 变为 1
+    y = via_value(x)     // y = 2
+    return x + y - 3     // 0
+}
+```
+
 ## 接收者与借用
 
 在结构体方法中，接收者的类型决定了是否可以修改数据。`self` 消费所有权，`ref self` 借用不可变地访问数据，`ref mut self` 则允许修改：

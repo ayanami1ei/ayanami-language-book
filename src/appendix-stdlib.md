@@ -147,17 +147,35 @@ enum Option[T] {
 | `unwrap_or(self, T default) -> T` | `Some` 时返回内部值，否则返回 `default` |
 | `is_some(self) -> bool` | 是否为 `Some` |
 
+## 构造函数（显式泛型调用）
+
+命名空间构造函数使用 `类型::new[T](...)` 形式；泛型实参可省略，由上下文或后续用法推断：
+
+| 构造 | 说明 |
+|------|------|
+| `ArrayList::new[T]()` | 空表 |
+| `ArrayList::with_capacity[T](n)` | 预分配容量（n <= 0 时等价于 `new`） |
+| `LinkedList::new[T]()` | 空链表 |
+| `String::empty()` / `String::new()` | 空字符串 |
+| `String::new([char] data, int len)` | 从拥有所有权的字符缓冲构造 |
+
+```ayanami
+a = ArrayList::new[int]()
+b = ArrayList::with_capacity[String](8)
+c = LinkedList::new[int]()
+s = String::new(['h', 'i'], 2)
+```
+
 ## 集合模块
 
 ### list 模块
 
-`List[T]` 接口（`list.lcl`）：
+`List[T]` 接口（`list.lcl`，元素无约束；`to_string` 由具体集合在 `impl[T:ToString]` 中提供）：
 
 ```ayanami
-interface List[T:ToString] {
+interface List[T] {
     fn push(ref mut self, T val);
     fn index(ref self, int index)->T;
-    fn to_string(ref self)->String;
     fn len(ref self)->int;
     fn iter(ref self, fn(T) f);
 }
@@ -165,10 +183,10 @@ interface List[T:ToString] {
 
 ### arraylist 模块
 
-`ArrayList[T]` 顺序表（`arraylist.lcl`）：
+`ArrayList[T]` 顺序表（`arraylist.lcl`；元素无约束，`to_string` 要求 `T: ToString`）：
 
 ```ayanami
-struct ArrayList[T:ToString] {
+struct ArrayList[T] {
     [T] data
     int len
     int capability
@@ -177,6 +195,7 @@ struct ArrayList[T:ToString] {
 
 | 方法 | 说明 |
 |------|------|
+| `ArrayList::new[T]()` / `ArrayList::with_capacity[T](n)` | 构造空表 / 预分配容量 |
 | `push(ref mut self, T val)` | 追加元素，自动扩容 |
 | `index(ref self, int i) -> T` | 按下标读取 |
 | `set(ref mut self, int i, T v)` | 按下标写入 |
@@ -185,14 +204,14 @@ struct ArrayList[T:ToString] {
 | `is_empty(ref self) -> bool` | 是否为空 |
 | `clear(ref mut self)` | 清空（保留底层缓冲） |
 | `iter(ref self, fn(T) f)` | 依次调用 `f` |
-| `to_string(ref self) -> String` | 形如 `[1, 2, 3]` |
+| `to_string(ref self) -> String` | 形如 `[1, 2, 3]`（要求 `T: ToString`） |
 
 ### linkedlist 模块
 
-`LinkedList[T]`（`linkedlist.lcl`，当前为数组缓冲实现，接口与 `List` 一致）：
+`LinkedList[T]`（`linkedlist.lcl`，当前为数组缓冲实现，接口与 `List` 一致；元素无约束）：
 
 ```ayanami
-struct LinkedList[T:ToString] {
+struct LinkedList[T] {
     [T] data
     int len
     int capability
@@ -206,7 +225,7 @@ struct LinkedList[T:ToString] {
 | `index(ref self, int i) -> T` | 按下标读取 |
 | `len(ref self) -> int` | 元素个数 |
 | `iter(ref self, fn(T) f)` | 依次调用 `f` |
-| `to_string(ref self) -> String` | 字符串形式 |
+| `to_string(ref self) -> String` | 字符串形式（要求 `T: ToString`） |
 
 注意：`pop()` 调用方需自行保证非空；`clear()` 保留底层缓冲。
 
