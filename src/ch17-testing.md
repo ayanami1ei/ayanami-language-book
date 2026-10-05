@@ -1,59 +1,81 @@
 # 第 17 章 测试
 
-Ayanami 没有内建测试框架，也没有 `assert` 宏。标准库与主仓库使用的是同一套简单的回归模式：
-**用真实编译器运行用例，用退出码与输出子串判定成败**。这套模式同样适用于你自己的项目。
+标准库自带一个轻量测试框架：用标注声明用例、用宏做断言，`scripts/test.sh` 统一构建、安装并运行。
+这套约定同样可以照搬到你自己的项目。
 
-## 三类回归
+## 写一个用例
 
-| 类别 | 判定 | 用例与清单 |
-|---|---|---|
-| 正例 | 运行退出码与期望一致 | `tests/*.aya` + `positive_exit.txt` |
-| 运行时 panic | 退出码 101，且输出包含指定子串 | `tests/panic_exit.txt` |
-| 编译期负例 | `check` 输出命中 `.expected` 中任一子串 | `tests/compile_fail/` |
-
-## 写一个正例
-
-约定：每个检查失败返回**不同的非 0 码**，全部通过返回 0；用例不依赖交互输入，尽量短。
+`import "test"` 提供 `#[test]`、`#[should_panic]` 标注与一组 `#assert*` 断言宏：
 
 ```ayanami
-import "math"
+import "test"
 
-fn main() -> int {
-    if abs(-5) != 5 { return 1 }
-    if pow(2, 10) != 1024 { return 2 }
-    return 0
+#[test]
+fn test_add() {
+    #assert(1 + 1 == 2)
+    #assert_eq(2 + 2, 4)
+    #assert_ne(1, 2)
 }
-```
 
-`main` 的返回值就是进程退出码，所以一个用例文件就能自包含地表达“哪一条检查失败了”。
-
-## 测试 panic 与编译错误
-
-越界等运行时错误会以退出码 101 终止并输出消息，可以用“退出码 + 输出子串”来断言：
-
-```ayanami
-import "arraylist"
-
-fn main() -> int {
+#[should_panic]
+fn test_oob() {
     a = ArrayList::new[int]()
-    a.push(1)
-    x = a.index(5)      // panic: index out of bounds...
-    return 0
+    x = a.index(5)      // 期望 panic（退出码 101）
 }
 ```
 
-清单文件记录期望（panic 类需要额外一列输出子串）：
+- 一个函数只写一个标注：`#[test]`（应通过）或 `#[should_panic]`（应 panic）；
+- 用例函数写成 void 形式；断言失败即 panic，并打印 `文件:行:列` 与消息；
+- `should_panic` 用例只要以退出码 101 结束即通过。
+
+可用断言（失败消息包含源码文本与调用点）：
+
+| 宏 | 说明 |
+|---|---|
+| `#assert(cond)` | `cond` 为假即失败 |
+| `#assert_eq(a, b)` / `#assert_ne(a, b)` | 相等 / 不等 |
+| `#assert_lt(a, b)` / `#assert_le` / `#assert_gt` / `#assert_ge` | 比较 |
+| `#assert_contains(s, sub)` | 字符串包含 |
+| `#assert_some(opt)` / `#assert_none(opt)` | Option 期望（消费该值一次） |
+| `#assert_close(a, b, eps)` | 浮点近似：`\|a-b\| <= eps` |
+| `#fail(msg)` | 无条件失败 |
+
+复杂条件可以先赋值到局部变量，再 `#assert`。
+
+## 运行
+
+标准库的 `scripts/test.sh` 会先重建并安装 `.lcl`，再运行全部测试：
+
+```bash
+AYANAMI_BIN=<主仓>/target/debug/ayanami ./scripts/test.sh
+./scripts/test.sh --no-install        # 跳过重建
+./scripts/test.sh --filter string     # 只跑名字含 string 的用例
+```
+
+输出示例：
 
 ```text
-# positive_exit.txt
-test_arraylist.aya 0
-
-# panic_exit.txt
-test_panic_bounds.aya 101 index out of bounds
+running 17 unit tests
+  ok   string_test::test_basic
+  ...
+running 1 compile-fail tests
+  ok   compile_fail/missing_import.aya
+test result: ok. 18/18 passed
 ```
 
-编译期负例写在 `tests/compile_fail/<名>.aya`，配同名 `.expected`：每行一个候选子串，
-`check` 输出命中任意一行即通过。例如：
+运行器为每个用例生成最小 driver 并**独立进程**执行（panic 隔离）：退出码 `0` 通过，
+`should_panic` 期望 `101`。
+
+## 三类测试
+
+| 路径 | 说明 |
+|---|---|
+| `tests/unit/*_test.aya` | 单元用例（`#[test]` / `#[should_panic]`） |
+| `tests/unit/<模块>.stdin` | 为该模块用例提供标准输入（每个用例独立进程，从头读取） |
+| `tests/compile_fail/*.aya` + `.expected` | 编译期负例：`.expected` 每行一个候选子串，命中任意一行即通过 |
+| `tests/golden/*.aya` + `.out` | stdout 黄金输出（精确对比） |
+
+编译期负例示例：
 
 ```ayanami
 // tests/compile_fail/missing_import.aya
@@ -69,33 +91,22 @@ fn main() -> int {
 cannot resolve import 'no_such_module_xyz'
 ```
 
-## 运行与自动化
+## 语言级回归
 
-标准库子仓的 `scripts/test.sh` 会先用 `build.sh --install` 重建 `.lcl`，再跑完三类用例：
+编译器主仓另有 `./scripts/regression.sh`（`example/*.aya` 正例 + `tests/compile_fail/` 负例）
+与 `./scripts/ir_snapshot.sh`（ast/hir/mir/lir 快照），见第 16 章。
 
-```bash
-AYANAMI_BIN=<主仓>/target/debug/ayanami ./scripts/test.sh
-./scripts/test.sh --no-install    # 不重建 .lcl
-```
+## 已知限制
 
-输出 `std tests: positive=N panic=N negative=N failures=N`，有失败时退出码非 0，可直接接进 CI。
-
-主仓库另有语言级回归，由第 16 章的 `./scripts/regression.sh`（`example/*.aya` 正例 +
-`tests/compile_fail/` 负例）与 `./scripts/ir_snapshot.sh`（各阶段 IR 快照）覆盖。
-
-## 给自己的项目照搬
-
-你不需要任何库：建一个 `tests/` 目录，用上面三类清单记录期望，再写几十行脚本遍历
-用例、比对退出码与输出即可。要点：
-
-- 失败码从 1 递增，便于定位是哪条检查失败；
-- 需要验证输出内容时，用 panic 类别的子串匹配（正例只看退出码）；
-- 用例尽量 ≤ 60 行，不依赖交互输入。
+- 带标注用例中，断言报出的行列可能偏移（宏卫生性问题）；以文件与消息为准；
+- 用例文件只 `import "test"` 加直接使用的模块，避免重复导入触发重复符号链接错误；
+- 语句级 `#[should_panic]` 目前没有运行时语义（panic 即退出 101）。
 
 ## 小结
 
-- 三类回归：正例退出码、panic 退出码 + 子串、编译期负例子串；
-- 标准库完整说明见
-  [Ayanami-std 的 `docs/testing.md`](https://github.com/ayanami1ei/Ayanami-std/blob/main/docs/testing.md)。
+- `#[test]` / `#[should_panic]` 加 `#assert*` 宏写用例；
+- `scripts/test.sh` 跑单元、编译期负例与黄金输出；
+- 细节见
+  [Ayanami-std `docs/dev/testing.md`](https://github.com/ayanami1ei/Ayanami-std/blob/main/docs/dev/testing.md)。
 
 下一章是全书收官：用递归下降解析器写一个表达式计算器。

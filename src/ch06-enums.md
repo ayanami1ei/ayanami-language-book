@@ -109,15 +109,25 @@ fn main() -> int {
 }
 ```
 
-> **当前限制**：泛型枚举载荷的 `match` 与 `Result.try_unwrap()` 因编译器 bug 暂不可用
-> （主仓 issue #68 / #69）。修复前请使用 `Option` 的辅助方法，或通过 `_tag` / `_data_变体`
-> 字段访问结果；非泛型枚举的 `match` 不受影响。
+`Option` 也支持 `match`：
+
+```ayanami
+fn describe(Option[int] o) -> int {
+    return match o {
+        Some(v) => v,
+        None => 0,
+    }
+}
+```
+
+> **当前限制**：`Result.try_unwrap()` 方法仍受编译器 bug 影响（主仓 issue #68）；
+> 修复前请用 `match` 或 `?`（见第 12 章）。
 
 ## 小结
 
 - 用 `enum` 定义变体；`枚举名::变体名(...)` 构造；
 - `_tag` 是判别值，`_data_变体名` 是载荷；
 - `match` 是表达式，分支必须覆盖所有变体；
-- 标准库的 `Option` / `Result` 是泛型枚举，泛型 `match` 修复前用辅助方法或字段访问。
+- 标准库的 `Option` / `Result` 是泛型枚举，`match` 与普通枚举一样可用。
 
 下一章我们将介绍接口与动态派发机制。

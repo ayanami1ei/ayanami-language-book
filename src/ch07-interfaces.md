@@ -105,6 +105,25 @@ fn main() -> int {
 标准库已经为 `int`、`float`、`char`、`bool` 和 `String` 实现了 `ToString`，
 所以它们都可以直接和字符串相加。
 
+## `Self`：接口中的实现类型
+
+接口签名里可以写 `Self`，表示“实现该接口的类型”，在结构匹配与泛型特化时被替换：
+
+```ayanami
+interface Maker {
+    fn make(ref self) -> Self;
+}
+
+impl int {
+    fn make(ref self) -> int { return self + 1 }   // 满足 Maker
+}
+
+fn bump[T: Maker](ref T v) -> T { return v.make() }
+```
+
+含 `Self` 的方法**不能用于 `ref Interface` 动态派发**（对象安全限制，编译期报错）——
+需要返回实现类型时请用泛型约束 `[T: Maker]`。
+
 ## 接口与泛型的区别
 
 虽然接口和泛型都可以实现代码复用，但它们的工作方式不同：

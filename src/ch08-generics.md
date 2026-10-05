@@ -37,6 +37,21 @@ fn max[T: Ord](T a, T b) -> T {
 
 这里的 `T: Ord` 表示类型 `T` 必须实现了 `Ord` 接口。该接口通常包含比较操作符如 `<`, `>`, `<=`, `>=` 等。
 
+约束也可以带参数，即接口本身是泛型的：
+
+```ayanami
+interface Into[T] {
+    fn into(self) -> T;
+}
+
+fn as_float[U: Into[float]](U x) -> float {
+    return x.into()
+}
+```
+
+标准库 `convert` 模块提供了自然转换（`int -> float`、`char -> int`、`bool -> int`）与 `Into[T]` 接口，
+可直接用于这种约束（见第 11 章）。
+
 调用时，编译器会确保传入的参数类型确实实现了 `Ord` 接口：
 
 ```ayanami

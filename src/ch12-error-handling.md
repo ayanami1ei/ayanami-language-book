@@ -38,39 +38,25 @@ fn outer(int x) -> Result[int, int] {
 
 这样错误就会沿着调用链一直向上传播，直到某一层显式处理它。
 
-标准库的 `Result` 还提供了一个便捷方法 `try_unwrap()`，它在 `Err` 时返回 `0`（适合错误值无关紧要的场合），与 `?` 的传播语义不同。不过当前版本中，泛型枚举的 `try_unwrap()` 与 `match` 因编译器 bug 暂不可用（详见下一节）。
+标准库的 `Result` 还提供了一个便捷方法 `try_unwrap()`，它在 `Err` 时返回 `0`（适合错误值无关紧要的场合），与 `?` 的传播语义不同。该方法目前仍受编译器 bug 影响（issue #68），修复前请用 `match` 或 `?`。
 
-## 处理结果：`_tag` 与 match（当前限制）
+## 处理结果
 
-正常情况下可以用 `match` 处理 `Result` 的两个分支：
-
-```ayanami
-match a {
-    Ok(v) => println("ok: " + v),
-    Err(e) => println("err: " + e),
-}
-```
-
-但**当前版本中，泛型枚举载荷的 `match` 与 `Result.try_unwrap()` 还不可用**
-（主仓 issue #68 / #69）。修复前可以先通过 `_tag` 与 `_data_` 字段判断：
+用 `match` 处理 `Result` 的两个分支：
 
 ```ayanami
 fn main() -> int {
     a = outer(1)
     b = outer(-5)
-    if a._tag == 0 {
-        println("ok: " + a._data_Ok._0)
-    } else {
-        println("err: " + a._data_Err._0)
+    match a {
+        Ok(v) => println("ok: " + v),
+        Err(e) => println("err: " + e),
     }
     return a._tag + b._tag - 1
 }
 ```
 
-- `_tag == 0` 表示 `Ok`，`_tag == 1` 表示 `Err`（按声明顺序）；
-- `a._data_Ok._0` / `a._data_Err._0` 分别是两个变体的载荷。
-
-非泛型枚举的 `match` 不受影响（见第 6 章），`?` 运算符也正常工作。
+`_tag` / `_data_` 字段访问仍然可用（`_tag == 0` 表示 `Ok`），但一般直接用 `match` 更清晰。
 
 ## 自定义错误类型
 
@@ -117,6 +103,6 @@ panic 输出到 stderr，无法捕获；需要恢复的错误请使用 `Result`�
 
 ## 总结
 
-Ayanami 的错误处理机制基于 `Result` 枚举类型，允许开发者显式地处理可能失败的操作。你可以使用 `?` 运算符把错误传播给上层，或用 `_tag` / `_data_` 字段检查结果（泛型枚举的 `match` 修复前）。此外，还可以通过实现 `Error` 接口来自定义错误类型，使程序更具可读性和维护性。
+Ayanami 的错误处理机制基于 `Result` 枚举类型，允许开发者显式地处理可能失败的操作。你可以使用 `?` 运算符把错误传播给上层，或用 `match` 处理结果。此外，还可以通过实现 `Error` 接口来自定义错误类型；不可恢复的错误用 `#panic` 终止。
 
 在下一章中，我们将介绍 Ayanami 的标注系统，包括如何使用各种注解来增强代码的语义和优化性能。

@@ -6,16 +6,22 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 
 当前标准库包含以下主要模块：
 
-- `io`：输入输出操作，如 `print`、`println`、`putchar` 和 `getchar`
-- `math`：数学函数，包括整数与浮点运算
-- `string`：字符串处理功能
+- `io`：输入输出（`print` / `println` / `getchar` / `read_line` / `read_int`）
+- `math`：数学函数（整数与浮点）
+- `string`：字符串与字符处理
+- `convert`：严格解析与类型转换（`try_parse_int`、`to_int`、`Into[T]`）
+- `text`：文本处理（`split` / `join` / `replace` / 填充）
+- `rand`：伪随机数（`Rng`）
+- `time`：时间（`now_millis` / `now_unix`）
+- `env`：命令行参数与环境变量
+- `fs`：文件读写
+- `option`：`Option[T]`（`std` 也会导入）
 - `panic`：运行时错误（`#panic` 宏与越界检查，见第 12 章）
-- `std`：主入口模块，整合了 `io`、`string`、`math` 等，并提供 `Error` 接口、`Result[T, E]` 和 `Option[T]`
-- `list`：集合接口定义
-- `arraylist`：顺序表实现
-- `linkedlist`：链表实现
+- `test`：测试框架（`#[test]` 与 `#assert` 宏，见第 17 章）
+- `std`：主入口，整合常用模块，并提供 `Error` / `Result` / `Option`
+- `list` / `arraylist` / `linkedlist`：集合
 
-此外，还有一个实验性模块 `mir`，用于插件开发，详情请见附录 A。
+此外还有一个实验性模块 `mir`，用于插件开发，详情请见附录 A。
 
 ## 输入输出（io）
 
@@ -39,6 +45,14 @@ fn main() -> int {
 ```ayanami
 c = getchar();
 putchar(65);   // 输出 'A'
+```
+
+### 行输入
+
+```ayanami
+line = read_line()          // 读取一行（不含换行；EOF 返回空串）
+n = read_int()              // 读一行并宽松解析（trim + parse_int，失败 0）
+opt = try_read_int()        // 严格解析，返回 Option[int]
 ```
 
 ## 数学函数（math）
@@ -125,6 +139,8 @@ fn main() -> int {
 
 `index_of` 方法在未找到子串时返回 `-1`。`s.index(i)`（或 `s[i]`）越界会 panic（退出码 101）；`parse_int` 是前缀式解析（跳过前导空白与正负号，遇到非数字停止），要求整个串合法请用 `is_int()`。
 
+字符串与集合的长度、下标参数使用 `usize`（无符号 64 位，`usize ≡ u64`）；索引处写任意整数类型都会被统一转换，所以 `a[1u8]`、`s[i]` 都可以直接使用。
+
 ### 字符工具
 
 每个字符（`char`）也支持分类和转换方法：
@@ -148,7 +164,7 @@ fn main() -> int {
 
 ## 标准模块（std）
 
-`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist`、`arraylist` 和 `panic`，并定义了错误处理相关的接口和类型。
+`std` 模块是所有标准库功能的入口点，它等价于导入 `io`、`string`、`math`、`list`、`linkedlist`、`arraylist`、`option` 和 `panic`，并提供 `Error` 接口与 `Result[T, E]`。
 
 ### 错误处理接口
 
@@ -162,7 +178,7 @@ interface Error {
 
 ### Result 类型
 
-`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符可以传播错误；`try_unwrap` 与泛型枚举的 `match` 当前受编译器 bug 影响（见第 12 章）。
+`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符传播错误，或用 `match` 处理两个分支；`try_unwrap` 方法当前受编译器 bug 影响（见第 12 章）。
 
 ### Option 类型
 
@@ -254,6 +270,77 @@ fn main() -> int {
     return 0
 }
 ```
+
+## 转换与解析（convert）
+
+```ayanami
+import "convert"
+
+parse_int_or("42", 0)         // 42（严格解析，失败用 fallback）
+"2.5".try_parse_float()       // Option[float]
+3.9.to_int()                  // 3（截断向零）
+65.to_char()                  // 'A'
+true.to_int()                 // 1
+```
+
+严格解析（`try_parse_int` / `try_parse_float` / `try_parse_bool`）不允许首尾空白，失败返回 `None`；
+`parse_int_or` / `parse_float_or` / `parse_bool_or` 是带默认值的便捷包装。
+`Into[T]` 接口提供自然转换（`int -> float`、`char -> int`、`bool -> int`），可作泛型约束（见第 8 章）。
+
+## 文本处理（text）
+
+```ayanami
+import "text"
+
+parts = split("a,b,c", ",")     // ArrayList[String]
+join(parts, "-")                // "a-b-c"
+replace("a-b", "-", "+")        // "a+b"
+pad_left("42", 5, '0')          // "00042"
+```
+
+## 随机数（rand）
+
+```ayanami
+import "rand"
+
+rng = Rng::new(42)              // 固定种子（序列可复现）
+secret = rng.next_range(0, 100) // [0, 100) 内的整数
+n = rng.next_int()              // 步进并返回新状态
+```
+
+`Rng::from_entropy()` 用系统熵源创建非确定性的生成器。这是伪随机（LCG），不要用于加密。
+
+## 时间（time）
+
+```ayanami
+import "time"
+
+t0 = now_millis()      // 单调毫秒，适合计时/差值
+now_unix()             // Unix 秒（墙上时钟）
+```
+
+## 命令行参数与环境变量（env）
+
+```ayanami
+import "env"
+
+arg_count()                    // 参数个数（含程序名，下标 0）
+arg(0)                         // 程序路径
+get_env("PATH").unwrap_or("")  // Option[String]
+```
+
+## 文件读写（fs）
+
+```ayanami
+import "fs"
+
+if write_file("/tmp/a.txt", "hello") {
+    s = read_file("/tmp/a.txt").unwrap_or("")
+}
+exists("/tmp/a.txt")
+```
+
+`read_file` 返回 `Option[String]`，`write_file` 返回是否成功；按字节读写（二进制安全）。
 
 ## 总结
 

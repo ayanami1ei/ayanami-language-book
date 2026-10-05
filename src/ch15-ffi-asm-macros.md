@@ -31,6 +31,54 @@ extern "C" fn abort();
 
 这种函数通常用于终止程序执行，例如在错误处理中调用 C 的 `abort()` 函数。
 
+## 导出 C 符号（`#[export]`）
+
+反向的互操作：让 C 调用 Ayanami。`#[export]` 定义函数并保留原始符号名（不加修饰）：
+
+```ayanami
+#[export]
+fn aya_add(int a, int b) -> int { return a + b }
+```
+
+C 侧声明：`int64_t aya_add(int64_t, int64_t);`
+
+类型映射（当前 LLVM 后端）：
+
+| Ayanami | C 侧建议 |
+|---|---|
+| `int` / `i64` | `int64_t` |
+| `i8`…`i32` / `u8`…`u32` | `intN_t` / `uintN_t` |
+| `float` | `double` |
+| `f32` | `float` |
+| `char` | `char`（当前仅 ASCII） |
+| `bool` | `_Bool`（跨边界建议用 `int`） |
+| `ref T` / `ref mut T` | `const T*` / `T*`（出参用 `ref mut`） |
+
+```ayanami
+#[export]
+extern "C" fn aya_fill(ref mut int dst, int v) -> void {
+    dst = v
+}
+```
+
+限制：`#[export]` 不能用于泛型函数、结构体/枚举/接口/impl 块；与 libc 同名会覆盖（有意为之）。
+完整说明见主仓 `docs/c-interop.md`。
+
+## 自定义 runtime
+
+项目可以通过 `ayanami.toml` 或环境变量替换内置 `runtime.c`：
+
+```toml
+[runtime]
+path = "custom_runtime.c"   # .c / .a / .o，相对项目根
+```
+
+```bash
+AYANAMI_RUNTIME=/path/to/runtime.a ayanami build   # 环境变量优先
+```
+
+这意味着你可以用 Ayanami 自己写运行时并打包成 `libruntime.a`。
+
 ## 标注与优化
 
 为了帮助编译器更好地优化跨语言调用，你可以为外部函数添加各种标注。这些标注会传递给 LLVM 编译器后端，从而提升性能或保证语义正确性。

@@ -34,6 +34,10 @@ target = "executable"
 [build.targets]
 "src/lib.aya" = "dynamic-lib"
 "src/utils.aya" = "static-lib"
+
+# 可选：自定义 runtime（.c / .a / .o；AYANAMI_RUNTIME 环境变量优先）
+[runtime]
+path = "custom_runtime.c"
 ```
 
 - `[package]`：项目名与版本号；
