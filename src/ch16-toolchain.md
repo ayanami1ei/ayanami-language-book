@@ -19,6 +19,9 @@
 
 构建产物默认放在项目根目录的 `build/` 下。
 
+`ayanami build --release` / `ayanami run --release` 开启 release 优化（`opt -O3` + `llc -O3`、
+所有权/标注推断属性、内部化）；默认 debug 模式编译更快、契约检查开启。细节见主仓 `docs/optimization.md`。
+
 ## 16.2 项目配置 `ayanami.toml`
 
 单文件可以直接编译，但正式项目建议用 `ayanami.toml` 描述构建目标：
@@ -97,7 +100,54 @@ code --install-extension ayanami-0.6.0.vsix
 import "math_lib.lcl";
 ```
 
-## 16.6 编译管线回顾
+## 16.6 性能基准（bench/）
+
+仓库的 `bench/` 用于验证 release 优化的实际收益，包含两套基准：
+
+| 套件 | 文件 | 内容 |
+| --- | --- | --- |
+| 跨语言五内核 | `bench/bench.aya` | nbody / matmul / sieve / qsort / mandelbrot，与 Rust / Java / Zig / C 同题对比 |
+| std 密集四内核 | `bench/bench_std.aya` | list_push / str_build / map_ops / iface，衡量 std、所有权与内联优化 |
+
+所有实现保持相同常量、运算顺序与工作量，**校验和必须跨语言一致**（否则对比无效）。
+
+### 协议
+
+- 每内核 1 次预热 + 3 次计时取平均；外部再交错轮转重复取最小，消除时段负载偏差；
+- 反优化措施：用全局种子/累加器锚定计时区；C 用 `-ffp-contract=off` 避免 FMA 收缩；
+- 资源隔离：systemd scope（`MemoryMax=3G`）+ `timeout`；
+- 绝对毫秒受负载影响，读表看**同节内的相对关系与趋势**。
+
+### 运行
+
+```bash
+./scripts/bench_compare.sh            # 跨语言对比（含 checksum 校验）
+BENCH_RUNS=5 ./scripts/bench_compare.sh
+./scripts/bench_std.sh                # std 密集（release）
+AYANAMI_LTO=1 ./scripts/bench_std.sh  # 对比 LTO
+
+# 优化落地后跑基准并追加一节到 bench/RESULTS.md
+./scripts/bench_record.sh "M-opt.11：xxx"
+```
+
+### 结果示例（2026-10-06，i7-13650HX，ms，min-of-N）
+
+| kernel | Ayanami | Rust | Java 17 | Zig | C (gcc) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| nbody | 92 | 77 | 84 | 75 | 71 |
+| matmul | 187 | 186 | 319 | 284 | 167 |
+| sieve | 194 | 189 | 196 | 191 | 196 |
+| qsort | 119 | 120 | 138 | 111 | 122 |
+| mandelbrot | 67 | 66 | 247 | 68 | 207 |
+
+Ayanami（`--release`：`opt -O3` + `llc -O3` + 所有权/标注推断属性 + 内部化）与 Rust / Zig / C 处于同一档；
+mandelbrot 上三个 LLVM 后端（Ayanami / Rust / Zig）都自动向量化了像素循环，gcc / Java 没有，
+所以后两者明显更慢——这是编译器差异而非语言差异。
+
+各内核的测点、规模、校验和与读表要点见 `bench/KERNELS.md`；历史趋势见 `bench/RESULTS.md`；
+优化设计（debug/release 双模式、属性推断与 LTO）见 `docs/optimization.md`。
+
+## 16.7 编译管线回顾
 
 ```text
 源码 → Lexer → Parser(AST) → HIR → MIR → LIR → LLVM IR → .o → 可执行文件
@@ -111,7 +161,7 @@ import "math_lib.lcl";
 理解这条管线有助于读懂错误信息：例如「hir error」是类型/名称解析阶段，
 「borrow error」来自 MIR 借用检查，而「llc failed」说明问题出在 LLVM IR 生成或优化阶段。
 
-## 16.7 小结
+## 16.8 小结
 
 - 单文件用 `ayanami run/check`，工程用 `ayanami.toml` + 项目模式；
 - `fmt` 与 `check --watch` 改善日常开发体验；
