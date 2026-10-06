@@ -38,7 +38,7 @@ fn outer(int x) -> Result[int, int] {
 
 这样错误就会沿着调用链一直向上传播，直到某一层显式处理它。
 
-标准库的 `Result` 还提供了一个便捷方法 `try_unwrap()`，它在 `Err` 时返回 `0`（适合错误值无关紧要的场合），与 `?` 的传播语义不同。该方法目前仍受编译器 bug 影响（issue #68），修复前请用 `match` 或 `?`。
+标准库的 `Result` 还提供了 `try_unwrap()`（`Err` 时返回 `0`）、`is_ok()` / `is_err()`、`unwrap_or(default)`、`ok()`、`map` / `map_err` 等方法。
 
 ## 处理结果
 

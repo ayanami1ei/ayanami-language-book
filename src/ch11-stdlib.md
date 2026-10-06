@@ -16,6 +16,8 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `env`：命令行参数与环境变量
 - `fs`：文件读写
 - `option`：`Option[T]`（`std` 也会导入）
+- `eq` / `sort`：`Eq` 接口与排序（`Ord` 接口）
+- `hashset` / `hashmap`：哈希集合与哈希表（`Hash` 接口）
 - `panic`：运行时错误（`#panic` 宏与越界检查，见第 12 章）
 - `test`：测试框架（`#[test]` 与 `#assert` 宏，见第 17 章）
 - `std`：主入口，整合常用模块，并提供 `Error` / `Result` / `Option`
@@ -53,7 +55,11 @@ putchar(65);   // 输出 'A'
 line = read_line()          // 读取一行（不含换行；EOF 返回空串）
 n = read_int()              // 读一行并宽松解析（trim + parse_int，失败 0）
 opt = try_read_int()        // 严格解析，返回 Option[int]
+f = read_float()            // 宽松解析浮点（失败 0.0）
+b = read_bool()             // 宽松解析布尔（失败 false）
 ```
+
+`try_read_float()` / `try_read_bool()` 是对应的严格版本，返回 `Option`。
 
 ## 数学函数（math）
 
@@ -85,6 +91,9 @@ fn main() -> int {
     return 0
 }
 ```
+
+此外还提供 `gcd` / `lcm` / `is_prime`（整数），以及方法 `n.is_even()` / `n.is_odd()`、
+`f.is_nan()`。
 
 ## 字符串处理（string）
 
@@ -141,6 +150,19 @@ fn main() -> int {
 
 字符串与集合的长度、下标参数使用 `usize`（无符号 64 位，`usize ≡ u64`）；索引处写任意整数类型都会被统一转换，所以 `a[1u8]`、`s[i]` 都可以直接使用。
 
+`trim_start` / `trim_end` 只去掉一侧空白；字符串支持字典序比较（`<` `>` `<=` `>=`）。
+
+### 格式化
+
+```ayanami
+255.to_hex()         // "ff"
+255.to_hex_upper()   // "FF"
+255.to_bin()         // "11111111"
+255.to_oct()         // "377"
+3.14159.to_fixed(2)  // "3.14"（定点小数）
+1234.5.to_sci(2)     // "1.23e+03"（科学计数法）
+```
+
 ### 字符工具
 
 每个字符（`char`）也支持分类和转换方法：
@@ -178,7 +200,7 @@ interface Error {
 
 ### Result 类型
 
-`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符传播错误，或用 `match` 处理两个分支；`try_unwrap` 方法当前受编译器 bug 影响（见第 12 章）。
+`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符传播错误，或用 `match` 处理两个分支；还有 `try_unwrap()` / `is_ok()` / `map` 等辅助方法（见第 12 章）。
 
 ### Option 类型
 
@@ -254,7 +276,48 @@ fn main() -> int {
 集合对元素类型**没有约束**：任意类型（包括未实现 `ToString` 的结构体、枚举）都可以放入；
 只有调用 `to_string()` 时才要求元素实现 `ToString`。
 
+`ArrayList` 还提供 `contains` / `index_of` / `remove`（要求元素实现 `Eq`：`same(ref self, ref Self other) -> bool`）、
+`reverse`、`insert_at` / `remove_at`、`first` / `last` 等操作。
+
 集合支持索引语法 `a[i]`（等价于 `a.index(i)`）。越界访问（`a.index(5)` 或 `a[5]`）、空表 `pop()` 都会在运行时 panic（退出码 101），错误位置指向你的调用行。`iter` 的回调不能捕获外部变量，但可以调用全局函数。
+
+### 排序（sort）
+
+排序基于 `Ord` 接口（`cmp(ref self, ref Self other) -> int`，返回 `<0 / 0 / >0`），内置 `int` 与 `String`（字典序）：
+
+```ayanami
+import "arraylist"
+import "sort"
+
+a = ArrayList::new[int]()
+a.push(3)
+a.push(1)
+a.push(2)
+a.sort()                 // [1, 2, 3]（稳定插入排序）
+a.min()                  // Option[int]：Some(1)
+a.binary_search(2)       // 1（要求已升序；未找到 -1）
+```
+
+自由函数形式是 `sort(a)`，另有兼容包装 `sort_int(a)` / `sort_string(a)`。自定义类型只要提供
+`cmp` 方法即满足 `Ord` 约束。
+
+### 哈希集合与哈希表
+
+```ayanami
+import "hashset"
+import "hashmap"
+
+s = HashSet::new[String]()
+s.insert("a")             // true
+s.contains("a")           // true
+
+m = HashMap::new[String, int]()
+m.insert("x", 1)
+m.get("x").unwrap_or(0)   // 1
+```
+
+键类型需实现 `Hash` 接口（`hash` + `hash_eq`），内置 `int` 与 `String`；
+实现为开放寻址，装填因子超过 0.5 自动扩容。
 
 ### LinkedList
 
@@ -285,7 +348,9 @@ true.to_int()                 // 1
 
 严格解析（`try_parse_int` / `try_parse_float` / `try_parse_bool`）不允许首尾空白，失败返回 `None`；
 `parse_int_or` / `parse_float_or` / `parse_bool_or` 是带默认值的便捷包装。
-`Into[T]` 接口提供自然转换（`int -> float`、`char -> int`、`bool -> int`），可作泛型约束（见第 8 章）。
+`parse_int_result` / `parse_float_result` / `parse_bool_result` 返回 `Result[T, ParseError]`
+（`Empty` / `Invalid`）。`Into[T]` 接口提供自然转换（`int -> float`、`char -> int`、`bool -> int`），
+可作泛型约束（见第 8 章）。
 
 ## 文本处理（text）
 
@@ -296,6 +361,8 @@ parts = split("a,b,c", ",")     // ArrayList[String]
 join(parts, "-")                // "a-b-c"
 replace("a-b", "-", "+")        // "a+b"
 pad_left("42", 5, '0')          // "00042"
+lines("a\nb")                   // ["a", "b"]（兼容 \r\n）
+split_once("k=v", "=")          // Split { found, before, after }
 ```
 
 ## 随机数（rand）
@@ -306,6 +373,8 @@ import "rand"
 rng = Rng::new(42)              // 固定种子（序列可复现）
 secret = rng.next_range(0, 100) // [0, 100) 内的整数
 n = rng.next_int()              // 步进并返回新状态
+rng.next_bool()                 // 随机布尔
+rng.next_float01()              // [0.0, 1.0) 内的浮点
 ```
 
 `Rng::from_entropy()` 用系统熵源创建非确定性的生成器。这是伪随机（LCG），不要用于加密。
@@ -317,6 +386,7 @@ import "time"
 
 t0 = now_millis()      // 单调毫秒，适合计时/差值
 now_unix()             // Unix 秒（墙上时钟）
+sleep_ms(100)          // 睡眠 100 毫秒（<= 0 直接返回）
 ```
 
 ## 命令行参数与环境变量（env）
@@ -338,9 +408,10 @@ if write_file("/tmp/a.txt", "hello") {
     s = read_file("/tmp/a.txt").unwrap_or("")
 }
 exists("/tmp/a.txt")
+lines = read_lines("/tmp/a.txt")   // Option[ArrayList[String]]
 ```
 
-`read_file` 返回 `Option[String]`，`write_file` 返回是否成功；按字节读写（二进制安全）。
+`read_file` / `read_lines` 返回 `Option`，`write_file` 返回是否成功；按字节读写（二进制安全）。
 
 ## 总结
 

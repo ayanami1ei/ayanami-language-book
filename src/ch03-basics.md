@@ -18,6 +18,52 @@ x = x + 1
 
 这表示将变量 `x` 的当前值加一后，再赋回给它。这种语法简单直观，避免了复杂的声明与初始化过程。
 
+## 常量与全局变量
+
+`const` 是编译期常量，不占运行时存储，可用于数组大小：
+
+```ayanami
+const MAX_SIZE = 16
+const MAGIC = 0x12345678
+const MASK = (1 << 8) - 1
+const PI: float = 3.14159
+
+buf = [int; MAX_SIZE]
+```
+
+- 顶层声明，`pub` 与类型标注可选，行尾 `;` 可选；
+- 初始化式必须是编译期常量（字面量、一元/二元运算、引用此前声明的 const）；
+- 编译期求值并内联到使用点；局部变量可以遮蔽同名 const。
+
+`static` 是可寻址的全局存储（常量初始化）：
+
+```ayanami
+static MAX = 10
+static mut COUNTER = 0
+
+fn bump() -> int {
+    COUNTER = COUNTER + 1
+    return COUNTER
+}
+```
+
+- `static` 不可变，`static mut` 可写（赋值穿透引用写回）；
+- 可用 `ref` / `ref mut` 取全局的引用，传给需要借用的函数；
+- 全局值不能包含堆所有权（`String` / 动态数组）；需要表时用固定大小数组 `[T; n]`；
+- `pub static` 可跨模块导出（`.lcl` 携带类型，定义在被导入包）。
+
+`#[compile_time]` 标注的函数既可以运行期调用，也可以在 const / static 初始化式里被编译期解释执行：
+
+```ayanami
+#[compile_time]
+fn square(int x) -> int { return x * x }
+
+const S = square(12)      // 编译期求值
+```
+
+编译期求值支持标量、局部变量、`if` / `while` / `for`、块尾表达式与 const fn 互调（递归），
+不支持堆 / 字符串 / 方法调用。详见主仓 `docs/const-globals.md`。
+
 ## 基本类型
 
 Ayanami 的基本类型如下：

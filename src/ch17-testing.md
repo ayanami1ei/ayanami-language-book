@@ -55,12 +55,14 @@ AYANAMI_BIN=<主仓>/target/debug/ayanami ./scripts/test.sh
 输出示例：
 
 ```text
-running 17 unit tests
+running 75 unit tests
   ok   string_test::test_basic
   ...
 running 1 compile-fail tests
   ok   compile_fail/missing_import.aya
-test result: ok. 18/18 passed
+running 6 golden-output tests
+  ok   golden/word_count.aya
+test result: ok. 82/82 passed
 ```
 
 运行器为每个用例生成最小 driver 并**独立进程**执行（panic 隔离）：退出码 `0` 通过，

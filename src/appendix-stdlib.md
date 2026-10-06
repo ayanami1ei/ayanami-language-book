@@ -16,6 +16,8 @@ Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使�
 | `read_line() -> String` | 读取一行（不含换行；EOF 返回空串） |
 | `read_int() -> int` | 读一行并宽松解析（`trim` + `parse_int`，失败 0） |
 | `try_read_int() -> Option[int]` | 读一行并严格解析（失败 `None`） |
+| `read_float() -> float` / `try_read_float()` | 浮点行输入（宽松 / `Option`） |
+| `read_bool() -> bool` / `try_read_bool()` | 布尔行输入（宽松 / `Option`） |
 
 ```ayanami
 import "io";
@@ -40,6 +42,9 @@ fn main() -> int {
 | `max(int a, int b)` | 最大值 |
 | `clamp(int x, int lo, int hi)` | 限制范围 |
 | `pow(int base, int exp)` | 整数幂 |
+| `gcd(int a, int b)` / `lcm(int a, int b)` | 最大公约数 / 最小公倍数（`gcd(0,0)==0`；`lcm` 含 0 返回 0） |
+| `is_prime(int n)` | 是否素数（`n < 2` 为 false） |
+| `n.is_even()` / `n.is_odd()` | 奇偶判断（`impl int`） |
 
 ### 浮点函数
 
@@ -52,6 +57,7 @@ fn main() -> int {
 | `pow(float base, int exp)` | 浮点幂 |
 | `sqrt(float x)` | 平方根 |
 | `floor(float x)` / `ceil(float x)` | 向下/向上取整 |
+| `f.is_nan()` | 是否 NaN（`impl float`） |
 
 ## string 模块
 
@@ -73,15 +79,19 @@ struct String {
 | `s.add(ref String other) -> String` | 拼接（`+` 运算符） |
 | `s.eq(ref String other) -> bool` | 相等比较（`==`） |
 | `s.ne(ref String other) -> bool` | 不等比较（`!=`） |
+| `s.lt / gt / le / ge(ref String) -> bool` | 字典序比较（`<` `>` `<=` `>=`） |
 | `s.copy() -> String` | 深拷贝 |
 | `s.to_string() -> String` | 消费 self 并返回（ToString 接口） |
 | `42.to_string()` | int/float/char/bool → String |
+| `3.14159.to_fixed(2)` / `1234.5.to_sci(2)` | 定点 / 科学计数法格式化 |
+| `255.to_hex()` / `to_hex_upper()` / `to_bin()` / `to_oct()` | 整数进制格式化 |
 | `s.is_empty() -> bool` | 是否空串 |
 | `s.contains(ref String) -> bool` | 是否包含子串 |
 | `s.index_of(ref String) -> int` | 子串位置（未找到 -1） |
 | `s.starts_with(ref String) -> bool` / `s.ends_with(ref String) -> bool` | 前缀/后缀 |
 | `s.substring(usize start, usize end) -> String` | 区间 `[start, end)`，越界自动夹取 |
 | `s.trim() -> String` | 去首尾空白 |
+| `s.trim_start()` / `s.trim_end()` | 去首部 / 尾部空白 |
 | `s.to_upper() -> String` / `s.to_lower() -> String` | 大小写转换 |
 | `s.repeat(usize n) -> String` | 重复拼接 |
 | `s.parse_int() -> int` | 前缀式解析：跳过前导空白/正负号，遇非数字停止 |
@@ -136,10 +146,13 @@ enum Result[T, E] {
 
 | 方法 | 说明 |
 |------|------|
-| `try_unwrap(self) -> T` | 提取成功值；遇到 `Err` 时返回 0（当前受编译器 bug 影响，见下） |
+| `try_unwrap(self) -> T` | 提取成功值；遇到 `Err` 时返回 0 |
+| `is_ok()` / `is_err() -> bool` | 判断 |
+| `unwrap_or(default) -> T` | `Ok` 取值，`Err` 返回默认值 |
+| `ok() -> Option[T]` | `Ok(v)` → `Some(v)`，`Err` → `None` |
+| `map[U](fn(T) -> U)` / `map_err[F](fn(E) -> F)` | 映射成功 / 错误值 |
 
-> **当前限制**：`Result.try_unwrap()` 方法仍受编译器 bug 影响（主仓 issue #68）；
-> 请改用 `match` 或 `?` 错误传播。
+> `?` 错误传播与 `match` 均可正常使用。
 
 ### Option[T]
 
@@ -156,8 +169,13 @@ enum Option[T] {
 |------|------|
 | `unwrap_or(self, T default) -> T` | `Some` 时返回内部值，否则返回 `default` |
 | `is_some(self) -> bool` | 是否为 `Some` |
+| `or(self, Option[T] other) -> Option[T]` | `Some` 返回自身，`None` 返回 `other` |
+| `map[U](fn(T) -> U)` | `Some(v)` → `Some(f(v))`，`None` 不变 |
+| `and_then[U](fn(T) -> Option[U])` | `Some(v)` → `f(v)`（链式），`None` 不变 |
+| `filter(fn(T) -> bool)` | 谓词为假时变 `None` |
 
-两个方法都会消费 `self`，同一个值不要连续调用。
+方法都会消费 `self`，同一个值不要连续调用。组合子里的 lambda **不能捕获外部变量**，
+只能使用参数与全局函数。
 
 ## panic 模块
 
@@ -203,6 +221,7 @@ fn main() -> int {
 | `s.try_parse_bool() -> Option[bool]` | 仅 `"true"` / `"false"` |
 | `s.parse_float() -> float` | 宽松，失败 0.0 |
 | `parse_int_or(ref String, int fallback) -> int` 等 | 带默认值的便捷包装 |
+| `parse_int_result(ref String) -> Result[int, ParseError]` 等 | Result 版（`Empty` / `Invalid`） |
 | `3.to_float()` / `3.into()` | int → float |
 | `3.9.to_int()` | 截断向零 |
 | `'A'.to_int()` / `65.to_char()` | char ↔ int |
@@ -221,6 +240,8 @@ fn main() -> int {
 | `replace(ref String s, ref String old, ref String new) -> String` | 替换全部出现 |
 | `pad_left(ref String s, usize width, char fill) -> String` | 左侧填充到 `width` |
 | `pad_right(ref String s, usize width, char fill) -> String` | 右侧填充到 `width` |
+| `lines(ref String s) -> ArrayList[String]` | 按行拆分（兼容 `\r\n`，末尾换行不产生空行） |
+| `split_once(ref String s, ref String sep) -> Split` | 首个分隔符处切分（`Split { found, before, after }`） |
 
 ## rand 模块
 
@@ -232,6 +253,8 @@ fn main() -> int {
 | `Rng::from_entropy()` | 系统熵源（非确定性） |
 | `r.next_int() -> int` | 步进并返回新状态 `[0, 2^31)` |
 | `r.next_range(int lo, int hi) -> int` | `[lo, hi)`；`hi <= lo` 返回 `lo` |
+| `r.next_bool() -> bool` | 随机布尔 |
+| `r.next_float01() -> float` | `[0.0, 1.0)` 内的浮点 |
 
 伪随机（LCG），序列可复现，非加密用途。
 
@@ -243,6 +266,7 @@ fn main() -> int {
 |---|---|
 | `now_millis() -> int` | 单调毫秒（适合计时/差值） |
 | `now_unix() -> int` | Unix 秒（墙上时钟） |
+| `sleep_ms(int ms)` | 睡眠 `ms` 毫秒（`<= 0` 直接返回） |
 
 ## env 模块
 
@@ -263,6 +287,7 @@ fn main() -> int {
 | `exists(String path) -> bool` | 文件是否存在 |
 | `read_file(String path) -> Option[String]` | 读取整个文件（失败 `None`） |
 | `write_file(String path, String data) -> bool` | 覆盖写入 |
+| `read_lines(String path) -> Option[ArrayList[String]]` | 按行拆分（`\r\n` 兼容；失败 `None`） |
 
 ## test 模块
 
@@ -326,6 +351,12 @@ struct ArrayList[T] {
 | `len(ref self) -> usize` | 元素个数 |
 | `is_empty(ref self) -> bool` | 是否为空 |
 | `clear(ref mut self)` | 清空（保留底层缓冲） |
+| `contains(v)`（`T: Eq`） | 是否包含（线性查找） |
+| `index_of(v) -> int`（`T: Eq`） | 首次出现下标；未找到 -1 |
+| `remove(v) -> bool`（`T: Eq`） | 删除首个等于 `v` 的元素 |
+| `reverse()` | 原地反转 |
+| `insert_at(usize i, v)` / `remove_at(usize i)` | 指定位置插入 / 删除；越界 panic 101 |
+| `first()` / `last() -> T` | 首 / 末元素；空表 panic 101 |
 | `iter(ref self, fn(T) f)` | 依次调用 `f`（回调不能捕获外部变量） |
 | `to_string(ref self) -> String` | 形如 `[1, 2, 3]`（要求 `T: ToString`） |
 
@@ -351,6 +382,34 @@ struct LinkedList[T] {
 | `to_string(ref self) -> String` | 字符串形式（要求 `T: ToString`） |
 
 注意：越界与空表 `pop` 会运行时 panic（退出码 101，位置指向调用行）；`clear()` 保留底层缓冲。
+
+### sort 模块
+
+`import "sort"`；基于 `Ord` 接口（`cmp(ref self, ref Self other) -> int`，内置 `int` / `String` 字典序）：
+
+| 入口 | 说明 |
+|---|---|
+| `a.sort()` / `sort(a)` | 泛型升序（稳定插入排序） |
+| `sort_int(a)` / `sort_string(a)` | 兼容包装 |
+| `a.min()` / `a.max() -> Option[T]` | 最小 / 最大元素（空表 `None`） |
+| `a.is_sorted() -> bool` | 是否已升序 |
+| `a.binary_search(v) -> int` | 二分查找（要求已升序）；未找到 -1 |
+
+### hash / hashset / hashmap 模块
+
+`Hash` 接口：`hash(ref self) -> int` + `hash_eq(ref self, ref Self other) -> bool`（内置 `int` / `String`）。
+
+| 方法 | 说明 |
+|---|---|
+| `HashSet::new[K]()` | 空集合 |
+| `s.insert(k) -> bool` / `s.contains(k) -> bool` / `s.remove(k) -> bool` | 插入 / 包含 / 删除 |
+| `s.len()` / `s.is_empty()` | 长度 / 是否为空 |
+| `HashMap::new[K, V]()` | 空表 |
+| `m.insert(k, v) -> bool` / `m.get(k) -> Option[V]` | 插入（覆盖返回 false）/ 取值（浅拷贝） |
+| `m.contains_key(k) -> bool` / `m.remove(k) -> bool` | 包含键 / 删除 |
+| `m.len()` / `m.is_empty()` | 长度 / 是否为空 |
+
+开放寻址（线性探测），装填因子超过 0.5 自动扩容。
 
 ## mir 模块（实验性）
 

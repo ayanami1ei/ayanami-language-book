@@ -120,9 +120,6 @@ fn describe(Option[int] o) -> int {
 }
 ```
 
-> **当前限制**：`Result.try_unwrap()` 方法仍受编译器 bug 影响（主仓 issue #68）；
-> 修复前请用 `match` 或 `?`（见第 12 章）。
-
 ## 小结
 
 - 用 `enum` 定义变体；`枚举名::变体名(...)` 构造；
