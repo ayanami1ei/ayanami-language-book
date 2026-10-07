@@ -75,24 +75,53 @@ fn add(float a, float b) -> float {
 
 这两个 `add` 函数分别处理整数和浮点数加法，编译器会根据调用时传入的参数类型自动选择正确的版本。
 
-## 函数指针与高阶函数
+## 闭包与可调用值
 
-函数本身也可以被赋值给变量或作为参数传递。这种变量被称为函数指针。例如：
+函数可以赋值给变量、作为参数或返回值。Ayanami 把可调用值统一为 `Fn(参数) -> 返回`：
 
 ```ayanami
-fn apply(int x, int y, fn(int,int)->int f) -> int {
-    return f(x, y);
+fn apply(int x, int y, Fn(int, int) -> int f) -> int {
+    return f(x, y)
+}
+
+fn add(int a, int b) -> int { return a + b }
+
+fn main() -> int {
+    f = add                        // 命名函数 → 静态闭包
+    return apply(3, 4, f)          // 7
 }
 ```
 
-这里 `f` 是一个函数指针，它接受两个整数并返回一个整数。你可以这样调用它：
+- **静态闭包**：命名函数与不捕获外部变量的 lambda，是 Copy 值、零分配；
+- **拥有闭包**：捕获外部变量的 lambda，移动语义，环境在作用域结束时释放；
+- 形参写 `ref Fn(...) -> ...` 可以借用闭包，同一个闭包可重复传入；
+- 裸函数指针类型 `fn(...) -> ...` 只用于 `extern "C"` / `#[export]` 签名（C 回调）。
+
+## 匿名函数与捕获
+
+lambda 语法为 `(参数列表) -> 返回类型 { 函数体 }`（返回类型可省略），支持按值捕获外部变量：
 
 ```ayanami
-f = add;
-a = apply(3, 4, f);
+import "io"
+import "string"
+import "arraylist"
+
+fn main() -> int {
+    limit = 1
+    list = ArrayList::new[int]()
+    list.push(1)
+    list.push(2)
+    kept = list.filter((int x) -> bool { return x > limit })   // 捕获 limit
+    kept.iter((int x) { println(x.to_string()) })
+    return 0
+}
 ```
 
-这表示我们将 `add` 函数赋值给变量 `f`，然后将其传入 `apply` 函数中执行。
+- 捕获按值：Copy 类型复制，拥有类型（如 `String`）移动进闭包；
+- lambda 内修改的是捕获副本，不影响外部变量；
+- 尾表达式作为隐式返回值：`(int x) -> int { x + 1 }`；
+- 体内移出捕获（赋值 / 返回 / 按值传参）会让闭包成为 `FnOnce`，调用会消费它；
+- 闭包不能捕获 `ref` / `ref mut` 变量。
 
 ## 命名空间
 
@@ -110,26 +139,6 @@ namespace math {
 
 标准库中的模块也属于命名空间的一种形式，比如 `import "io"` 就引入了一个名为 `io` 的命名空间，其中包含如 `println` 等函数。
 
-## 匿名函数
-
-Ayanami 还支持匿名函数（lambda 表达式），其语法为 `(参数列表) { 函数体 }`。你可以将匿名函数作为参数传递给其他函数：
-
-```ayanami
-import "io"
-import "string"
-import "arraylist"
-
-fn main() -> int {
-    list = ArrayList::new[int]();
-    list.push(1);
-    list.push(2);
-    list.iter((int x) { println(x.to_string()); });
-    return 0;
-}
-```
-
-在这个例子中，`(int x) { println(x); }` 是一个匿名函数，它被传入 `list.iter` 方法中，用于遍历列表中的每个元素并打印出来。
-
 ## 综合示例
 
 让我们看一个完整的示例程序，结合了以上所有概念：
@@ -137,7 +146,7 @@ fn main() -> int {
 ```ayanami
 fn add(int a, int b) -> int { return a + b; }
 
-fn apply(int x, int y, fn(int,int)->int f) -> int {
+fn apply(int x, int y, Fn(int, int) -> int f) -> int {
     return f(x, y);
 }
 
@@ -155,7 +164,7 @@ fn main() -> int {
 }
 ```
 
-在这个程序中，我们定义了一个基本的 `add` 函数，并通过 `apply` 将其作为函数指针传递。同时，在 `math` 命名空间中也定义了一个同名函数，用于演示命名空间的使用。最后在主函数中分别调用了这两个函数，并计算出最终结果。
+在这个程序中，我们定义了一个基本的 `add` 函数，并通过 `apply` 把它作为可调用值（闭包）传递。同时，在 `math` 命名空间中也定义了一个同名函数，用于演示命名空间的使用。最后在主函数中分别调用了这两个函数，并计算出最终结果。
 
 ## 预告
 

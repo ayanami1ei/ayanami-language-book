@@ -18,6 +18,7 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `option`：`Option[T]`（`std` 也会导入）
 - `eq` / `sort`：`Eq` 接口与排序（`Ord` 接口）
 - `hashset` / `hashmap`：哈希集合与哈希表（`Hash` 接口）
+- `iter`：迭代器与 `for x in ...`（`Iterator[T]`、`into_iter` 与适配器）
 - `panic`：运行时错误（`#panic` 宏与越界检查，见第 12 章）
 - `test`：测试框架（`#[test]` 与 `#assert` 宏，见第 17 章）
 - `std`：主入口，整合常用模块，并提供 `Error` / `Result` / `Option`
@@ -92,8 +93,8 @@ fn main() -> int {
 }
 ```
 
-此外还提供 `gcd` / `lcm` / `is_prime`（整数），以及方法 `n.is_even()` / `n.is_odd()`、
-`f.is_nan()`。
+此外还提供 `gcd` / `lcm` / `is_prime`（整数），`exp` / `ln` / `log10` / `round` / `trunc`（浮点），
+以及方法 `n.is_even()` / `n.is_odd()`、`f.is_nan()`。
 
 ## 字符串处理（string）
 
@@ -150,7 +151,8 @@ fn main() -> int {
 
 字符串与集合的长度、下标参数使用 `usize`（无符号 64 位，`usize ≡ u64`）；索引处写任意整数类型都会被统一转换，所以 `a[1u8]`、`s[i]` 都可以直接使用。
 
-`trim_start` / `trim_end` 只去掉一侧空白；字符串支持字典序比较（`<` `>` `<=` `>=`）。
+`trim_start` / `trim_end` 只去掉一侧空白；`remove_prefix` / `remove_suffix` 有则去掉、无则返回拷贝；
+字符串支持字典序比较（`<` `>` `<=` `>=`）；`split_whitespace` / `count` 见 `text` 模块。
 
 ### 格式化
 
@@ -230,6 +232,8 @@ fn main() -> int {
 ```
 
 注意：`unwrap_or` 与 `is_some` 会消费 `Option`，同一个值不要连续调用（每次用新的函数调用结果）。
+组合子 `or` / `map` / `and_then` / `filter` / `unwrap_or_else` / `map_or` 支持按值捕获的 lambda；
+`Result` 也有 `is_ok` / `is_err` / `unwrap_or` / `ok` / `map` / `map_err` / `unwrap_or_else` / `map_or`。
 
 ## 集合（list/arraylist/linkedlist）
 
@@ -277,9 +281,21 @@ fn main() -> int {
 只有调用 `to_string()` 时才要求元素实现 `ToString`。
 
 `ArrayList` 还提供 `contains` / `index_of` / `remove`（要求元素实现 `Eq`：`same(ref self, ref Self other) -> bool`）、
-`reverse`、`insert_at` / `remove_at`、`first` / `last` 等操作。
+`reverse`、`insert_at` / `remove_at`、`first` / `last` 等操作，以及函数式方法
+`map` / `filter` / `fold` / `any` / `all` / `find` / `position` / `count` / `retain`：
 
-集合支持索引语法 `a[i]`（等价于 `a.index(i)`）。越界访问（`a.index(5)` 或 `a[5]`）、空表 `pop()` 都会在运行时 panic（退出码 101），错误位置指向你的调用行。`iter` 的回调不能捕获外部变量，但可以调用全局函数。
+```ayanami
+import "arraylist"
+
+a = ArrayList::new[int]()
+a.push(1)
+a.push(2)
+a.push(3)
+b = a.filter((int x) -> bool { return x > 1 })   // [2, 3]
+sum = a.fold(0, (int acc, int x) -> int { return acc + x })  // 6
+```
+
+集合支持索引语法 `a[i]`（等价于 `a.index(i)`）。越界访问（`a.index(5)` 或 `a[5]`）、空表 `pop()` 都会在运行时 panic（退出码 101），错误位置指向你的调用行。`iter` 的回调支持按值捕获外部变量（见第 4 章）。
 
 ### 排序（sort）
 
@@ -334,6 +350,48 @@ fn main() -> int {
 }
 ```
 
+## 迭代器与 for-in（iter）
+
+`for x in it { ... }` 基于迭代器协议：任何具备 `next(ref mut self) -> Option[T]` 方法的类型都可迭代：
+
+```ayanami
+import "iter"
+import "arraylist"
+
+a = ArrayList::new[int]()
+a.push(1)
+a.push(2)
+a.push(3)
+
+s = 0
+for x in a.into_iter() {
+    s = s + x            // 6
+}
+```
+
+- `into_iter()` 消费集合，产出拥有型迭代器（`ArrayListIter` / `LinkedListIter` / `HashMapIter` / `HashSetIter`）；
+- `for x in (start, end[, step])` 的区间形式保持原有语义；
+- 自定义迭代器只需提供 `next`；`Iterator[T]` 接口形参走虚调用。
+
+适配器（可任意嵌套）：
+
+| 构造 | 说明 |
+|---|---|
+| `MapIter::new(it, f)` | 映射 |
+| `FilterIter::new(it, pred)` | 过滤 |
+| `TakeIter::new(it, n)` | 最多前 `n` 个 |
+| `EnumerateIter::new(it)` | 产出 `Pair[usize, T]`（下标从 0 起） |
+| `ZipIter::new(a, b)` | 逐对产出 `Pair[T, U]`，任一耗尽即结束 |
+
+```ayanami
+m = MapIter::new(a.into_iter(), (int x) -> int { return x * 10 })
+f = FilterIter::new(m, (int x) -> bool { return x > 20 })
+t = TakeIter::new(f, 2usize)
+
+total = 0
+for x in t { total = total + x }   // 30 + 40 = 70
+```
+
 ## 转换与解析（convert）
 
 ```ayanami
@@ -347,6 +405,7 @@ true.to_int()                 // 1
 ```
 
 严格解析（`try_parse_int` / `try_parse_float` / `try_parse_bool`）不允许首尾空白，失败返回 `None`；
+`try_parse_int_radix(base)` / `parse_int_radix(base)` 支持 2~36 进制，`is_float()` 判断整个串是否为合法浮点。
 `parse_int_or` / `parse_float_or` / `parse_bool_or` 是带默认值的便捷包装。
 `parse_int_result` / `parse_float_result` / `parse_bool_result` 返回 `Result[T, ParseError]`
 （`Empty` / `Invalid`）。`Into[T]` 接口提供自然转换（`int -> float`、`char -> int`、`bool -> int`），
@@ -362,8 +421,12 @@ join(parts, "-")                // "a-b-c"
 replace("a-b", "-", "+")        // "a+b"
 pad_left("42", 5, '0')          // "00042"
 lines("a\nb")                   // ["a", "b"]（兼容 \r\n）
+split_whitespace("a  b")        // ["a", "b"]
 split_once("k=v", "=")          // Split { found, before, after }
+count("the fox and the dog", "the")  // 2
 ```
+
+`s.lines_iter()` / `s.split_whitespace_iter()` 是惰性版本（消费字符串，供 `for` 迭代）。
 
 ## 随机数（rand）
 
@@ -386,6 +449,7 @@ import "time"
 
 t0 = now_millis()      // 单调毫秒，适合计时/差值
 now_unix()             // Unix 秒（墙上时钟）
+elapsed_ms(t0)         // 自 t0 起的毫秒差
 sleep_ms(100)          // 睡眠 100 毫秒（<= 0 直接返回）
 ```
 
@@ -396,7 +460,9 @@ import "env"
 
 arg_count()                    // 参数个数（含程序名，下标 0）
 arg(0)                         // 程序路径
+args()                         // ArrayList[String]：全部参数
 get_env("PATH").unwrap_or("")  // Option[String]
+get_env_or("HOME", "(unset)")  // 缺失时用 fallback
 ```
 
 ## 文件读写（fs）

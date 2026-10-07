@@ -74,6 +74,61 @@ impl Shape {
 }
 ```
 
+## 更多模式
+
+`match` 的模式不止变体名，还支持字面量、区间、`|`、guard、结构体解构与嵌套：
+
+```ayanami
+match n {
+    0 => println("zero"),
+    1..=9 => println("digit"),
+    10 | 20 => println("ten or twenty"),
+    v if v < 0 => println("negative"),
+    _ => println("other"),
+}
+```
+
+- 区间：`1..10`（半开）、`10..=20`（闭），限整数与 `char`；
+- `|` 组合多个模式；`if` guard 在匹配后追加条件；
+- `_` 通配，`v` 绑定整个值（顶层仅 Copy 类型）。
+
+结构体可以解构：
+
+```ayanami
+struct Point {
+    int x
+    int y
+}
+
+match p {
+    Point { x, y } => println(x + y),          // 简写绑定同名字段
+    Point { x = a, y = b } => println(a - b),  // 重命名
+}
+```
+
+枚举载荷可以嵌套与解构：
+
+```ayanami
+match opt {
+    Some(Some(v)) => println(v),
+    Some(Point { x, y }) => println(x + y),
+    Some(None) => println("inner none"),
+    None => println("none"),
+}
+```
+
+臂体可以写成块（尾表达式为值，块内可用 `return` / `break` / `continue`）：
+
+```ayanami
+return match x {
+    0 => 0,
+    n if n > 0 => { n * 2 },
+    _ => { 0 - 1 },
+}
+```
+
+穷尽检查会合并区间与字面量覆盖：例如 `u8` 上写 `0..=255` 或列全所有字面量即视为穷尽。
+
 ## 标准库中的泛型枚举
 
 标准库提供了两个常用的泛型枚举（定义在 `std` 模块）：
