@@ -52,6 +52,15 @@ fn as_float[U: Into[float]](U x) -> float {
 标准库 `convert` 模块提供了自然转换（`int -> float`、`char -> int`、`bool -> int`）与 `Into[T]` 接口，
 可直接用于这种约束（见第 11 章）。
 
+约束还可以组合（多约束 `[T: A + B]`），泛型体内可以调用任一 bound 的方法：
+
+```ayanami
+fn show[T: ToString + Eq](T a) -> String { return a.to_string(); }
+fn both_same[T: ToString + Eq](T a, T b) -> bool { return a.same(b); }
+```
+
+调用点必须同时满足全部约束。
+
 调用时，编译器会确保传入的参数类型确实实现了 `Ord` 接口：
 
 ```ayanami
@@ -86,16 +95,27 @@ fn main() -> int {
 
 ### 显式泛型实参与推断
 
-命名空间函数可以用显式泛型实参调用：`ns.fn[T](args)`。省略时，编译器会根据后续用法推断类型：
+泛型调用可以显式给出实参，也可以交给编译器推断。显式形式既支持限定名，也支持单标识符：
 
 ```ayanami
-a = ArrayList::new()      // T 暂未确定
-a.push(7)                 // 由 push 推断 T = int
+import "arraylist"
 
-b = ArrayList::with_capacity[String](8)   // 显式指定
+a = ArrayList::new[int]()          // 限定名 + 显式实参
+b = make[int]()                    // 单标识符函数（make 是泛型函数）
 ```
 
-标准库构造函数都采用这种形式，详见第 11 章与附录 A。
+省略时，编译器根据实参与后续用法推断：
+
+```ayanami
+c = ArrayList::new()      // T 暂未确定
+c.push(7)                 // 由 push 推断 T = int
+
+d = ArrayList::with_capacity[String](8)   // 显式指定
+```
+
+推断也支持**嵌套泛型**：`Box[Box[int]]` 能匹配形参 `Box[T]` 并解出 `T = Box[int]`，
+字段访问会保持完整类型（`x = b.v; x.v`）。标准库构造函数都采用显式泛型调用形式，
+详见第 11 章与附录 A。
 
 ## 单态化
 

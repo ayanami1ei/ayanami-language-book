@@ -4,13 +4,13 @@
 
 ## 1.1 安装
 
-Ayanami 目前支持 **Linux x86_64**。编译器自带 LLVM 后端，**不需要预装 LLVM**，
-只需要系统有 `gcc`（用于链接）和 glibc。
+Ayanami 目前支持 **Linux x86_64**，要求 glibc ≥ 2.39（Ubuntu 24.04 / Debian 13 / Arch 等）。
+编译器自带 LLVM 后端，**不需要预装 LLVM**，只需要系统有 `gcc`（用于链接）和 glibc。
 
 从 [GitHub Releases](https://github.com/ayanami1ei/Ayanami-language/releases) 下载发布包：
 
 ```bash
-tar xzf ayanami-0.6.0-linux-x86_64.tar.gz
+tar xzf ayanami-0.6.6-linux-x86_64.tar.gz
 cd install
 ```
 
@@ -30,6 +30,20 @@ install/
 ```
 
 编译器会自动在同目录查找 `llc`、`std/` 和 `runtime.c`，所以请保持目录完整。
+`llc`、`libLLVM` 及其运行时依赖（libxml2 / libicu / libedit 等）都已随包提供。
+
+### 联网更新
+
+```bash
+./ayanami --version            # 当前版本
+./ayanami update --check       # 查询最新 Release（0=已最新，1=有更新）
+./ayanami update               # 下载并原地更新（自动备份 install.bak-<ver>）
+./ayanami update --std-only    # 仅更新 std（编译器不动）
+./ayanami update --limit-rate 10M   # 下载限速（curl 语法）
+```
+
+更新走 GitHub Release（HTTPS），需要 `curl` 与 `tar`，失败自动回滚。
+VSCode 插件也提供 `Ayanami: Check for Updates` / `Ayanami: Update Compiler & Std` 命令。
 验证安装：
 
 ```bash
@@ -91,7 +105,7 @@ cd my_project
 ```toml
 [package]
 name = "my_project"
-version = "0.6.0"
+version = "0.6.6"
 
 [build]
 target = "executable"

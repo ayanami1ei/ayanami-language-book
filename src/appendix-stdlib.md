@@ -18,6 +18,7 @@ Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使�
 | `try_read_int() -> Option[int]` | 读一行并严格解析（失败 `None`） |
 | `read_float() -> float` / `try_read_float()` | 浮点行输入（宽松 / `Option`） |
 | `read_bool() -> bool` / `try_read_bool()` | 布尔行输入（宽松 / `Option`） |
+| `try_read_uint() -> Option[usize]` | 严格解析 `usize`（负数/失败 `None`） |
 
 ```ayanami
 import "io";
@@ -43,8 +44,14 @@ fn main() -> int {
 | `clamp(int x, int lo, int hi)` | 限制范围 |
 | `pow(int base, int exp)` | 整数幂 |
 | `gcd(int a, int b)` / `lcm(int a, int b)` | 最大公约数 / 最小公倍数（`gcd(0,0)==0`；`lcm` 含 0 返回 0） |
+| `sign(int x)` | 符号（-1 / 0 / 1） |
 | `is_prime(int n)` | 是否素数（`n < 2` 为 false） |
 | `n.is_even()` / `n.is_odd()` | 奇偶判断（`impl int`） |
+
+### 位操作（bitops 模块）
+
+`import "bitops"`：`popcount(int)`、`is_power_of_two(int)`、`leading_zeros(int)`、
+`trailing_zeros(int)`（`0` 的前导/尾随零为 64），纯 Ayanami 实现。
 
 ### 浮点函数
 
@@ -58,8 +65,11 @@ fn main() -> int {
 | `sqrt(float x)` | 平方根 |
 | `floor(float x)` / `ceil(float x)` | 向下/向上取整 |
 | `exp(float x)` / `ln(float x)` / `log10(float x)` | e^x / 自然对数 / 常用对数 |
+| `pi() -> float` / `sin(x)` / `cos(x)` / `tan(x)` / `atan2(y, x)` | 圆周率与三角函数（弧度） |
 | `round(float x)` / `trunc(float x)` | 四舍五入 / 向零截断 |
 | `f.is_nan()` | 是否 NaN（`impl float`） |
+
+> 浮点数学为纯 Ayanami 实现（不依赖 C libm）。
 
 ## string 模块
 
@@ -94,6 +104,8 @@ struct String {
 | `s.substring(usize start, usize end) -> String` | 区间 `[start, end)`，越界自动夹取 |
 | `s.trim() -> String` | 去首尾空白 |
 | `s.trim_start()` / `s.trim_end()` | 去首部 / 尾部空白 |
+| `s.is_whitespace() -> bool` | 是否全为空白（空串 false） |
+| `s.count_char(char c) -> int` | 字符出现次数 |
 | `s.remove_prefix(p)` / `s.remove_suffix(s)` | 有则去掉，无则返回拷贝 |
 | `s.to_upper() -> String` / `s.to_lower() -> String` | 大小写转换 |
 | `s.repeat(usize n) -> String` | 重复拼接 |
@@ -251,7 +263,8 @@ fn main() -> int {
 | `lines(ref String s) -> ArrayList[String]` | 按行拆分（兼容 `\r\n`，末尾换行不产生空行） |
 | `split_whitespace(ref String s) -> ArrayList[String]` | 按空白拆分（连续空白视为一个） |
 | `count(ref String s, ref String needle) -> int` | 非重叠出现次数（needle 为空返回 0） |
-| `s.lines_iter()` / `s.split_whitespace_iter()` | 惰性迭代器（消费 `s`，供 `for` 使用） |
+| `count_lines(ref String s) -> int` | 行数（`lines()` 语义；空串 0） |
+| `s.lines_iter()` / `s.split_whitespace_iter()` / `s.split_iter(sep)` | 惰性迭代器（消费 `s`，供 `for` 使用） |
 | `split_once(ref String s, ref String sep) -> Split` | 首个分隔符处切分（`Split { found, before, after }`） |
 
 ## rand 模块
@@ -266,6 +279,7 @@ fn main() -> int {
 | `r.next_range(int lo, int hi) -> int` | `[lo, hi)`；`hi <= lo` 返回 `lo` |
 | `r.next_bool() -> bool` | 随机布尔 |
 | `r.next_float01() -> float` | `[0.0, 1.0)` 内的浮点 |
+| `shuffle[T](ref mut ArrayList[T], ref mut Rng)` | 原地洗牌（Fisher–Yates，任意元素类型） |
 
 伪随机（LCG），序列可复现，非加密用途。
 
@@ -276,7 +290,9 @@ fn main() -> int {
 | 函数 | 说明 |
 |---|---|
 | `now_millis() -> int` | 单调毫秒（适合计时/差值） |
+| `now_micros() -> int` | 单调微秒 |
 | `now_unix() -> int` | Unix 秒（墙上时钟） |
+| `format_ms(int ms) -> String` | 毫秒格式化 `HH:MM:SS.mmm` |
 | `elapsed_ms(int start) -> int` | 自 `start`（来自 `now_millis`）起的毫秒差 |
 | `sleep_ms(int ms)` | 睡眠 `ms` 毫秒（`<= 0` 直接返回） |
 
@@ -290,6 +306,7 @@ fn main() -> int {
 | `arg(int i) -> String` | 第 i 个参数（越界返回空串） |
 | `get_env(String name) -> Option[String]` | 环境变量（缺失 `None`） |
 | `get_env_or(String name, String fallback) -> String` | 缺失用 fallback |
+| `has_env(String name) -> bool` | 环境变量是否存在 |
 | `args() -> ArrayList[String]` | 全部命令行参数（含程序名） |
 
 ## fs 模块
@@ -302,6 +319,11 @@ fn main() -> int {
 | `read_file(String path) -> Option[String]` | 读取整个文件（失败 `None`） |
 | `write_file(String path, String data) -> bool` | 覆盖写入 |
 | `read_lines(String path) -> Option[ArrayList[String]]` | 按行拆分（`\r\n` 兼容；失败 `None`） |
+| `append_file` / `remove_file` / `copy_file` / `rename_file` | 追加 / 删除 / 复制 / 重命名（返回 bool） |
+| `is_dir` / `is_file` / `mkdir` / `rmdir` | 类型判断与目录创建 / 删除 |
+| `mtime(String path) -> Option[int]` / `size(String path) -> Option[int]` | 修改时间（Unix 秒）/ 字节数 |
+| `list_dir(String path) -> Option[ArrayList[String]]` | 目录项（不含 `.` / `..`） |
+| `copy_tree(String src, String dst) -> int` | 递归复制目录树（返回文件数；失败 -1） |
 
 ## test 模块
 
@@ -366,9 +388,11 @@ struct ArrayList[T] {
 | `is_empty(ref self) -> bool` | 是否为空 |
 | `clear(ref mut self)` | 清空（保留底层缓冲） |
 | `contains(v)`（`T: Eq`） | 是否包含（线性查找） |
-| `index_of(v) -> int`（`T: Eq`） | 首次出现下标；未找到 -1 |
+| `index_of(v) -> int` / `last_index_of(v) -> int`（`T: Eq`） | 首次 / 最后一次出现下标；未找到 -1 |
 | `remove(v) -> bool`（`T: Eq`） | 删除首个等于 `v` 的元素 |
+| `dedup()`（`T: Eq`） | 去除相邻重复元素 |
 | `reverse()` | 原地反转 |
+| `swap(usize i, usize j)` | 交换两处元素；越界 panic 101 |
 | `insert_at(usize i, v)` / `remove_at(usize i)` | 指定位置插入 / 删除；越界 panic 101 |
 | `first()` / `last() -> T` | 首 / 末元素；空表 panic 101 |
 | `map[U](Fn(T) -> U)` | 映射为新表 |
@@ -397,7 +421,8 @@ struct LinkedList[T] {
 |------|------|
 | `LinkedList::new[T]()` / `LinkedList::with_capacity[T](n)` | 构造空表 / 预分配容量 |
 | `push` / `index` / `set` / `pop` / `clear` / `is_empty` | 与 `ArrayList` 对齐 |
-| `contains` / `index_of` / `remove` / `reverse` / `insert_at` / `remove_at` / `first` / `last` | 同 `ArrayList`（`T: Eq` 约束同上） |
+| `contains` / `index_of` / `last_index_of` / `remove` / `dedup` / `reverse` / `swap` / `insert_at` / `remove_at` / `first` / `last` | 同 `ArrayList`（`T: Eq` 约束同上） |
+| `map` / `filter` / `fold` / `any` / `all` / `find` / `position` / `count` / `retain` | 函数式方法（同 `ArrayList`） |
 | `iter` / `to_string` | 遍历 / 字符串形式（`T: ToString`） |
 
 注意：越界与空表 `pop` 会运行时 panic（退出码 101，位置指向调用行）；`clear()` 保留底层缓冲。
@@ -420,22 +445,26 @@ struct LinkedList[T] {
 
 | 方法 | 说明 |
 |---|---|
-| `HashSet::new[K]()` | 空集合 |
-| `s.insert(k) -> bool` / `s.contains(k) -> bool` / `s.remove(k) -> bool` | 插入 / 包含 / 删除 |
+| `HashSet::new[K]()` / `HashSet::with_capacity[K](n)` | 空集合 / 预分配槽位 |
+| `s.insert(k) -> bool` / `s.contains(k) -> bool` / `s.remove(k) -> bool` / `s.take(k) -> Option[K]` | 插入 / 包含 / 删除 / 删除并返回 |
 | `s.to_list() -> ArrayList[K]` | 所有元素（浅拷贝） |
 | `s.for_each(Fn(K))` / `s.fold[U](init, Fn(U, K) -> U)` | 遍历 / 折叠 |
 | `s.retain(Fn(K) -> bool)` | 原地保留 |
 | `s.union(other)` / `s.intersection(other)` / `s.difference(other)` | 并 / 交 / 差（新集合） |
-| `s.into_iter() -> HashSetIter[K]` | 拥有型迭代器 |
-| `s.len()` / `s.is_empty()` / `s.to_string()`（`K: ToString`） | 长度 / 空判断 / 字符串形式 |
-| `HashMap::new[K, V]()` | 空表 |
-| `m.insert(k, v) -> bool` / `m.get(k) -> Option[V]` | 插入（覆盖返回 false）/ 取值（浅拷贝） |
-| `m.contains_key(k) -> bool` / `m.remove(k) -> bool` | 包含键 / 删除 |
+| `s.is_subset_of(other)` / `s.is_superset_of(other) -> bool` | 子集 / 超集判断 |
+| `s.any/all(Fn(K) -> bool)` / `s.count(...) -> usize` / `s.find(...) -> Option[K]` | 谓词族 |
+| `s.clear()` / `s.into_iter()` / `s.len()` / `s.is_empty()` / `s.to_string()` | 清空 / 迭代 / 长度 / 空判断 / 字符串形式 |
+| `HashMap::new[K, V]()` / `HashMap::with_capacity[K, V](n)` | 空表 / 预分配槽位 |
+| `m.insert(k, v) -> bool` / `m.get(k) -> Option[V]` / `m.get_or_insert(k, v) -> V` | 插入（覆盖返回 false）/ 取值 / 取或插入 |
+| `m.contains_key(k) -> bool` / `m.contains_value(v) -> bool`（`V: Eq`） | 包含键 / 包含值 |
+| `m.remove(k) -> bool` / `m.remove_get(k) -> Option[V]` / `m.clear()` | 删除 / 删除并返回 / 清空 |
+| `m.merge(other)` | 合并另一张表（同键以 other 覆盖） |
+| `m.any/all(Fn(K, V) -> bool)` / `m.count(...) -> usize` / `m.find(...) -> Option[Pair[K, V]]` | 谓词族 |
 | `m.keys()` / `m.values() -> ArrayList[K]/ArrayList[V]` | 所有键 / 值（浅拷贝） |
+| `m.to_list() -> ArrayList[Pair[K, V]]` / `m.sorted_keys()` / `m.sorted_values()` | 键值对列表 / 排序视图（`K/V: Ord`） |
+| `m.map_values[U](Fn(V) -> U) -> HashMap[K, U]` | 值映射为新表 |
 | `m.for_each(Fn(K, V))` / `m.fold[U](init, Fn(U, K, V) -> U)` | 遍历 / 折叠 |
-| `m.retain(Fn(K, V) -> bool)` | 原地保留满足谓词的键值对 |
-| `m.to_string()`（`K/V: ToString`） | 形如 `{a: 1}` |
-| `m.into_iter() -> HashMapIter[K, V]` | 拥有型迭代器，产出 `Pair[K, V]` |
+| `m.retain(Fn(K, V) -> bool)` / `m.to_string()` / `m.into_iter()` | 原地保留 / 字符串形式 / 拥有型迭代器 |
 | `m.len()` / `m.is_empty()` | 长度 / 是否为空 |
 
 开放寻址（线性探测），装填因子超过 0.5 自动扩容。

@@ -15,6 +15,8 @@
 | `ayanami install <lcl>` | 从 `.lcl` 构建目标产物 |
 | `ayanami defs <file>` | 输出符号定义列表（JSON） |
 | `ayanami types <file>` | 输出 HIR 推断的变量类型（JSON，供编辑器类型提示） |
+| `ayanami --version` | 显示当前版本 |
+| `ayanami update [--check/--std-only/--dir <path>/--limit-rate <rate>]` | 联网更新编译器与 std（GitHub Release） |
 | `ayanami clean` | 清除 `build/` 目录 |
 
 构建产物默认放在项目根目录的 `build/` 下。
@@ -29,7 +31,7 @@
 ```toml
 [package]
 name = "my_project"
-version = "0.6.0"
+version = "0.6.6"
 
 [build]
 target = "executable"
@@ -66,10 +68,10 @@ ayanami defs src/main.aya
 
 ## 16.4 VSCode 插件
 
-发布包中带有 `ayanami-0.6.0.vsix`：
+发布包中带有 `ayanami-0.6.6.vsix`：
 
 ```bash
-code --install-extension ayanami-0.6.0.vsix
+code --install-extension ayanami-0.6.6.vsix
 ```
 
 插件提供语法高亮、结构体字段补全、方法补全、变量类型推断、

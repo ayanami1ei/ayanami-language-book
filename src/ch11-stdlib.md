@@ -8,6 +8,7 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 
 - `io`：输入输出（`print` / `println` / `getchar` / `read_line` / `read_int`）
 - `math`：数学函数（整数与浮点）
+- `bitops`：位操作（`popcount` / `leading_zeros` / `trailing_zeros` 等）
 - `string`：字符串与字符处理
 - `convert`：严格解析与类型转换（`try_parse_int`、`to_int`、`Into[T]`）
 - `text`：文本处理（`split` / `join` / `replace` / 填充）
@@ -58,6 +59,7 @@ n = read_int()              // 读一行并宽松解析（trim + parse_int，失
 opt = try_read_int()        // 严格解析，返回 Option[int]
 f = read_float()            // 宽松解析浮点（失败 0.0）
 b = read_bool()             // 宽松解析布尔（失败 false）
+u = try_read_uint()         // 严格解析 usize（负数/失败 None）
 ```
 
 `try_read_float()` / `try_read_bool()` 是对应的严格版本，返回 `Option`。
@@ -93,8 +95,12 @@ fn main() -> int {
 }
 ```
 
-此外还提供 `gcd` / `lcm` / `is_prime`（整数），`exp` / `ln` / `log10` / `round` / `trunc`（浮点），
+此外还提供 `sign`（符号）、`gcd` / `lcm` / `is_prime`（整数），
+`exp` / `ln` / `log10` / `round` / `trunc` / `pi` / `sin` / `cos` / `tan` / `atan2`（浮点），
 以及方法 `n.is_even()` / `n.is_odd()`、`f.is_nan()`。
+
+> 浮点数学（`sqrt` / `exp` / `ln` / 三角函数等）现为**纯 Ayanami 实现**（牛顿迭代 / 级数 / 范围归约），
+> 不依赖 C libm，便于自举与移植。
 
 ## 字符串处理（string）
 
@@ -152,6 +158,7 @@ fn main() -> int {
 字符串与集合的长度、下标参数使用 `usize`（无符号 64 位，`usize ≡ u64`）；索引处写任意整数类型都会被统一转换，所以 `a[1u8]`、`s[i]` 都可以直接使用。
 
 `trim_start` / `trim_end` 只去掉一侧空白；`remove_prefix` / `remove_suffix` 有则去掉、无则返回拷贝；
+`is_whitespace` 判断整串是否全为空白，`count_char` 统计字符出现次数；
 字符串支持字典序比较（`<` `>` `<=` `>=`）；`split_whitespace` / `count` 见 `text` 模块。
 
 ### 格式化
@@ -424,9 +431,10 @@ lines("a\nb")                   // ["a", "b"]（兼容 \r\n）
 split_whitespace("a  b")        // ["a", "b"]
 split_once("k=v", "=")          // Split { found, before, after }
 count("the fox and the dog", "the")  // 2
+count_lines("a\nb\n")           // 2
 ```
 
-`s.lines_iter()` / `s.split_whitespace_iter()` 是惰性版本（消费字符串，供 `for` 迭代）。
+`s.lines_iter()` / `s.split_whitespace_iter()` / `s.split_iter(sep)` 是惰性版本（消费字符串，供 `for` 迭代）。
 
 ## 随机数（rand）
 
@@ -438,6 +446,7 @@ secret = rng.next_range(0, 100) // [0, 100) 内的整数
 n = rng.next_int()              // 步进并返回新状态
 rng.next_bool()                 // 随机布尔
 rng.next_float01()              // [0.0, 1.0) 内的浮点
+shuffle(ref mut list, ref mut rng)  // 原地洗牌（Fisher–Yates，任意元素类型）
 ```
 
 `Rng::from_entropy()` 用系统熵源创建非确定性的生成器。这是伪随机（LCG），不要用于加密。
@@ -448,8 +457,10 @@ rng.next_float01()              // [0.0, 1.0) 内的浮点
 import "time"
 
 t0 = now_millis()      // 单调毫秒，适合计时/差值
+now_micros()           // 单调微秒
 now_unix()             // Unix 秒（墙上时钟）
 elapsed_ms(t0)         // 自 t0 起的毫秒差
+format_ms(3723000)     // "01:02:03.000"
 sleep_ms(100)          // 睡眠 100 毫秒（<= 0 直接返回）
 ```
 
@@ -463,6 +474,7 @@ arg(0)                         // 程序路径
 args()                         // ArrayList[String]：全部参数
 get_env("PATH").unwrap_or("")  // Option[String]
 get_env_or("HOME", "(unset)")  // 缺失时用 fallback
+has_env("HOME")                // 是否存在
 ```
 
 ## 文件读写（fs）
@@ -478,6 +490,8 @@ lines = read_lines("/tmp/a.txt")   // Option[ArrayList[String]]
 ```
 
 `read_file` / `read_lines` 返回 `Option`，`write_file` 返回是否成功；按字节读写（二进制安全）。
+此外还有文件管理：`append_file` / `remove_file` / `copy_file` / `rename_file`、
+`is_dir` / `is_file` / `mkdir` / `rmdir` / `mtime` / `size` / `list_dir` / `copy_tree`。
 
 ## 总结
 

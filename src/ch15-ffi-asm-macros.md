@@ -101,12 +101,11 @@ extern "C" fn strlen([char] s) -> int;
 
 ## 内联汇编
 
-Ayanami 支持内联汇编语法，允许你在函数中嵌入机器指令。这对于性能关键的部分或者需要直接操作寄存器的场景非常有用。
-
-例如：
+Ayanami 支持内联汇编语法，允许你在函数中嵌入机器指令。汇编属于机器级操作，**必须放在
+`unsafe` 上下文**（`unsafe fn` 或 `unsafe {}`）中（见第 18 章）：
 
 ```ayanami
-fn asm_demo(int a) -> int {
+unsafe fn asm_demo(int a) -> int {
     result = 0
     asm("mov $1, $0", in(reg) a, out(reg) result)
     return result
@@ -169,7 +168,7 @@ extern "C" fn abort();
 #[inline]
 fn fast() -> int { return 2 }
 
-fn asm_demo(int a) -> int {
+unsafe fn asm_demo(int a) -> int {
     result = 0
     asm("mov $1, $0", in(reg) a, out(reg) result)
     return result
@@ -177,11 +176,13 @@ fn asm_demo(int a) -> int {
 
 fn main() -> int {
     s = "hello"
-    return strlen(s.data) - 5 + fast() - 2 + asm_demo(7) - 7
+    x = 0
+    unsafe { x = asm_demo(7) }
+    return strlen(s.data) - 5 + fast() - 2 + x - 7
 }
 ```
 
-该程序调用了 C 标准库中的 `strlen`，使用了内联汇编来移动寄存器值，并通过 `#[inline]` 提示优化函数调用。
+该程序调用了 C 标准库中的 `strlen`，在 `unsafe fn` 中用内联汇编移动寄存器值，并通过 `#[inline]` 提示优化函数调用。
 
 ## 预告
 

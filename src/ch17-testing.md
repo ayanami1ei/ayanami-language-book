@@ -111,4 +111,4 @@ cannot resolve import 'no_such_module_xyz'
 - 细节见
   [Ayanami-std `docs/dev/testing.md`](https://github.com/ayanami1ei/Ayanami-std/blob/main/docs/dev/testing.md)。
 
-下一章是全书收官：用递归下降解析器写一个表达式计算器。
+下一章我们先认识 unsafe 与底层编程，然后进入全书收官项目。
