@@ -4,12 +4,13 @@
 
 ## 外部函数接口（FFI）
 
-Ayanami 支持通过 `extern` 声明调用外部语言的函数，尤其是 C 语言。这被称为外部函数接口（Foreign Function Interface, FFI）。你可以声明一个外部函数，然后像普通函数一样使用它。
-
-例如，要调用标准库中的 `strlen` 函数：
+Ayanami 支持通过 C ABI 标注声明外部函数。新语法用 `#[extern]` 标注，旧语法 `extern "C"` 完全等价：
 
 ```ayanami
-extern "C" fn strlen([char] s) -> int;
+#[extern]
+fn strlen([char] s) -> int;
+
+// 等价写法：extern "C" fn strlen([char] s) -> int;
 ```
 
 这个声明告诉编译器：有一个名为 `strlen` 的 C 函数，接受一个字符数组（即 `[char]` 类型），返回一个整数。一旦声明完成，你就可以直接调用它：
@@ -26,7 +27,8 @@ fn main() -> int {
 你还可以声明不返回的函数：
 
 ```ayanami
-extern "C" fn abort();
+#[extern]
+fn abort();
 ```
 
 这种函数通常用于终止程序执行，例如在错误处理中调用 C 的 `abort()` 函数。
@@ -56,7 +58,7 @@ C 侧声明：`int64_t aya_add(int64_t, int64_t);`
 
 ```ayanami
 #[export]
-extern "C" fn aya_fill(ref mut int dst, int v) -> void {
+fn aya_fill(ref mut int dst, int v) -> void {
     dst = v
 }
 ```
@@ -151,7 +153,23 @@ fn answer() -> int { return 42 }
 fn main() -> int { return answer() - 42 }
 ```
 
-宏系统目前仍处于实验阶段，未来接口可能会发生变化，请谨慎使用。
+### token 宏（结构化）
+
+除文本宏外，宏库可以用 `#[macro(tokens)]` 定义 **token 宏**：输入/输出是 TokenStream
+（含 span 与分组），编译器负责编解码，宏侧不需要拼接源码字符串：
+
+```ayanami
+#[macro(tokens)]
+pub fn tok_twice(input: TokenStream) -> TokenStream { /* ... */ }
+```
+
+配套能力：
+
+- **hygiene 原语**：`__ayanami_macro_hygienic(name)` 给宏内定义名加确定性后缀，避免捕获或泄漏调用点名字；
+- **诊断通道**：`__ayanami_macro_diag(level, msg)` 产生带调用点定位的 warn / error；
+- **展开调试**：`ayanami dump expanded <file>` 输出展开后的源码，`AYANAMI_MACRO_TRACE=1` 追踪展开过程。
+
+宏系统仍处于演进阶段，接口可能变化；完整设计见主仓 `docs/macros.md`。
 
 ## 示例程序
 
@@ -160,10 +178,12 @@ fn main() -> int { return answer() - 42 }
 ```ayanami
 #[pure]
 #[nounwind]
-extern "C" fn strlen([char] s) -> int;
+#[extern]
+fn strlen([char] s) -> int;
 
 #[noreturn]
-extern "C" fn abort();
+#[extern]
+fn abort();
 
 #[inline]
 fn fast() -> int { return 2 }

@@ -43,6 +43,8 @@ install/
 ```
 
 更新走 GitHub Release（HTTPS），需要 `curl` 与 `tar`，失败自动回滚。
+同版本 **respin（修复构建）** 也能检测：Release 附构建指纹，`--check` 会比较本地/远端哈希；
+已装同版本时可用 `ayanami update --from <资产 URL>` 强制拉取。
 VSCode 插件也提供 `Ayanami: Check for Updates` / `Ayanami: Update Compiler & Std` 命令。
 验证安装：
 

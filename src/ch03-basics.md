@@ -62,7 +62,29 @@ const S = square(12)      // 编译期求值
 ```
 
 编译期求值支持标量、局部变量、`if` / `while` / `for`、块尾表达式与 const fn 互调（递归），
-不支持堆 / 字符串 / 方法调用。详见主仓 `docs/const-globals.md`。
+不支持堆 / 字符串 / 方法调用。详见主仓 `docs/const-globals.md` 与 `docs/const-eval.md`。
+
+### 布局查询与编译期断言
+
+```ayanami
+struct Header {
+    int a
+    int b
+}
+
+const H_SIZE = size_of[Header]()      // 16
+const H_OFF_B = offset_of[Header](b)  // 8
+
+fn main() -> int {
+    static_assert(size_of[Header]() == 16)
+    static_assert(align_of[Header]() == 8)
+    return 0
+}
+```
+
+- `size_of[T]()` / `align_of[T]()` / `offset_of[T](field)` 是编译期常量（自然对齐，与结构体布局一致）；
+- `static_assert(cond)` 在编译期检查常量条件（可含 `#[compile_time]` 调用），为假直接报错；
+- 数组 / 结构体常量（`const TABLE = [..]`）会落地为内部全局，可直接索引 / 取字段。
 
 ## 基本类型
 

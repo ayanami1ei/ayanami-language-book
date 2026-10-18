@@ -33,6 +33,9 @@
 name = "my_project"
 version = "0.6.6"
 
+# 可选：编译期 feature 开关（#[cfg(feature = "x")]）
+features = ["a", "b"]
+
 [build]
 target = "executable"
 

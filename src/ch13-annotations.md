@@ -73,6 +73,9 @@ fn on_unix() -> int { return 1 }
 fn not_windows() -> int { return 2 }
 ```
 
+`#[cfg(feature = "x")]` 按 feature 开关裁剪；启用集合来自 `ayanami.toml` 顶层的
+`features = ["a", "b"]`，或环境变量 `AYANAMI_FEATURES`（逗号分隔）。
+
 ### 语句级条件编译
 
 你也可以在语句级别使用 `#[cfg(...)]`，以控制某条语句是否参与编译。

@@ -17,6 +17,7 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `env`：命令行参数与环境变量
 - `fs`：文件读写
 - `option`：`Option[T]`（`std` 也会导入）
+- `num`：显式溢出算术（`wrapping_*` / `saturating_*` / `checked_*` / `overflowing_*`）
 - `eq` / `sort`：`Eq` 接口与排序（`Ord` 接口）
 - `hashset` / `hashmap`：哈希集合与哈希表（`Hash` 接口）
 - `iter`：迭代器与 `for x in ...`（`Iterator[T]`、`into_iter` 与适配器）
@@ -209,7 +210,7 @@ interface Error {
 
 ### Result 类型
 
-`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符传播错误，或用 `match` 处理两个分支；还有 `try_unwrap()` / `is_ok()` / `map` 等辅助方法（见第 12 章）。
+`Result[T, E]` 是一种封装可能失败操作结果的类型。它有两个变体：成功（`Ok(T)`）或失败（`Err(E)`）。用 `?` 运算符传播错误，或用 `match` 处理两个分支；还有 `unwrap()` / `expect()` / `is_ok()` / `map` 等辅助方法（见第 12 章）。
 
 ### Option 类型
 
@@ -239,8 +240,9 @@ fn main() -> int {
 ```
 
 注意：`unwrap_or` 与 `is_some` 会消费 `Option`，同一个值不要连续调用（每次用新的函数调用结果）。
-组合子 `or` / `map` / `and_then` / `filter` / `unwrap_or_else` / `map_or` 支持按值捕获的 lambda；
-`Result` 也有 `is_ok` / `is_err` / `unwrap_or` / `ok` / `map` / `map_err` / `unwrap_or_else` / `map_or`。
+`unwrap()` / `expect(msg)` 在 `None` 时 panic（退出码 101）；组合子 `or` / `map` / `and_then` /
+`filter` / `unwrap_or_else` / `map_or` 支持按值捕获的 lambda；
+`Result` 也有 `unwrap` / `expect` / `is_ok` / `is_err` / `unwrap_or` / `ok` / `map` / `map_err` 等。
 
 ## 集合（list/arraylist/linkedlist）
 
@@ -399,6 +401,16 @@ total = 0
 for x in t { total = total + x }   // 30 + 40 = 70
 ```
 
+适配器也有自由函数形式，可用方法语法链式组合：
+
+```ayanami
+for p in a.into_iter().enumerate() { /* p: Pair[usize, int] */ }
+for p in a.into_iter().take(2usize).zip(b.into_iter()) { /* ... */ }
+```
+
+> 注：`map` / `filter`（以及导入 `hashset` 时的 `take`）与同名方法存在解析冲突（编译器 #189），
+> 修复前请用 `XxxIter::new` 构造，或只链 `enumerate` / `zip` / `take`（无冲突时）。
+
 ## 转换与解析（convert）
 
 ```ayanami
@@ -412,7 +424,8 @@ true.to_int()                 // 1
 ```
 
 严格解析（`try_parse_int` / `try_parse_float` / `try_parse_bool`）不允许首尾空白，失败返回 `None`；
-`try_parse_int_radix(base)` / `parse_int_radix(base)` 支持 2~36 进制，`is_float()` 判断整个串是否为合法浮点。
+`try_parse_int_radix(base)` / `parse_int_radix(base)` 支持 2~36 进制，`try_parse_uint()` 严格解析 `usize`（拒绝负数），
+`is_float()` 判断整个串是否为合法浮点。
 `parse_int_or` / `parse_float_or` / `parse_bool_or` 是带默认值的便捷包装。
 `parse_int_result` / `parse_float_result` / `parse_bool_result` 返回 `Result[T, ParseError]`
 （`Empty` / `Invalid`）。`Into[T]` 接口提供自然转换（`int -> float`、`char -> int`、`bool -> int`），
@@ -432,6 +445,7 @@ split_whitespace("a  b")        // ["a", "b"]
 split_once("k=v", "=")          // Split { found, before, after }
 count("the fox and the dog", "the")  // 2
 count_lines("a\nb\n")           // 2
+truncate("hello world", 8)      // "hello..."（截断加省略号）
 ```
 
 `s.lines_iter()` / `s.split_whitespace_iter()` / `s.split_iter(sep)` 是惰性版本（消费字符串，供 `for` 迭代）。
@@ -492,6 +506,8 @@ lines = read_lines("/tmp/a.txt")   // Option[ArrayList[String]]
 `read_file` / `read_lines` 返回 `Option`，`write_file` 返回是否成功；按字节读写（二进制安全）。
 此外还有文件管理：`append_file` / `remove_file` / `copy_file` / `rename_file`、
 `is_dir` / `is_file` / `mkdir` / `rmdir` / `mtime` / `size` / `list_dir` / `copy_tree`。
+需要失败详情时用 `read_file_result(path) -> Result[String, IoError]` 与 `last_error(path)`，
+`IoError` 带类别（`NotFound` / `PermissionDenied` …）、路径、errno 与系统消息。
 
 ## 总结
 

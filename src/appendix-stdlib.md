@@ -42,6 +42,7 @@ fn main() -> int {
 | `min(int a, int b)` | 最小值 |
 | `max(int a, int b)` | 最大值 |
 | `clamp(int x, int lo, int hi)` | 限制范围 |
+| `min` / `max` / `clamp`（`usize`） | `usize` 重载（长度比较用） |
 | `pow(int base, int exp)` | 整数幂 |
 | `gcd(int a, int b)` / `lcm(int a, int b)` | 最大公约数 / 最小公倍数（`gcd(0,0)==0`；`lcm` 含 0 返回 0） |
 | `sign(int x)` | 符号（-1 / 0 / 1） |
@@ -53,6 +54,18 @@ fn main() -> int {
 `import "bitops"`：`popcount(int)`、`is_power_of_two(int)`、`leading_zeros(int)`、
 `trailing_zeros(int)`（`0` 的前导/尾随零为 64），纯 Ayanami 实现。
 
+### 显式溢出算术（num 模块）
+
+`import "num"`；默认 `+` / `-` / `*` 溢出会 panic，本模块提供显式语义：
+
+| API | 说明 |
+|---|---|
+| `wrapping_add/sub/mul/neg` | 环绕（溢出回绕） |
+| `saturating_add/sub/mul/neg` | 饱和（取边界值） |
+| `overflowing_*` | 环绕值 + 溢出标记（`{ value, overflow }`） |
+| `checked_* -> Option[int]` | 溢出返回 `None` |
+| `*_overflow -> bool` | 单独取溢出标记 |
+
 ### 浮点函数
 
 | 函数 | 说明 |
@@ -61,7 +74,7 @@ fn main() -> int {
 | `min(float a, float b)` | 最小值 |
 | `max(float a, float b)` | 最大值 |
 | `clamp(float x, float lo, float hi)` | 限制范围 |
-| `pow(float base, int exp)` | 浮点幂 |
+| `pow(float base, int exp)` | 浮点幂（支持负指数） |
 | `sqrt(float x)` | 平方根 |
 | `floor(float x)` / `ceil(float x)` | 向下/向上取整 |
 | `exp(float x)` / `ln(float x)` / `log10(float x)` | e^x / 自然对数 / 常用对数 |
@@ -161,7 +174,7 @@ enum Result[T, E] {
 
 | 方法 | 说明 |
 |------|------|
-| `try_unwrap(self) -> T` | 提取成功值；遇到 `Err` 时返回 0 |
+| `unwrap(self) -> T` / `expect(msg) -> T` | `Ok` 取值；`Err` 触发 panic（退出码 101） |
 | `is_ok()` / `is_err() -> bool` | 判断 |
 | `unwrap_or(default) -> T` | `Ok` 取值，`Err` 返回默认值 |
 | `ok() -> Option[T]` | `Ok(v)` → `Some(v)`，`Err` → `None` |
@@ -185,6 +198,7 @@ enum Option[T] {
 | 方法 | 说明 |
 |------|------|
 | `unwrap_or(self, T default) -> T` | `Some` 时返回内部值，否则返回 `default` |
+| `unwrap(self) -> T` / `expect(msg) -> T` | `Some` 取值；`None` 触发 panic（101） |
 | `is_some(self) -> bool` | 是否为 `Some` |
 | `or(self, Option[T] other) -> Option[T]` | `Some` 返回自身，`None` 返回 `other` |
 | `map[U](Fn(T) -> U)` | `Some(v)` → `Some(f(v))`，`None` 不变 |
@@ -264,6 +278,7 @@ fn main() -> int {
 | `split_whitespace(ref String s) -> ArrayList[String]` | 按空白拆分（连续空白视为一个） |
 | `count(ref String s, ref String needle) -> int` | 非重叠出现次数（needle 为空返回 0） |
 | `count_lines(ref String s) -> int` | 行数（`lines()` 语义；空串 0） |
+| `truncate(ref String s, usize n) -> String` | 截断到 `n` 并加省略号 |
 | `s.lines_iter()` / `s.split_whitespace_iter()` / `s.split_iter(sep)` | 惰性迭代器（消费 `s`，供 `for` 使用） |
 | `split_once(ref String s, ref String sep) -> Split` | 首个分隔符处切分（`Split { found, before, after }`） |
 
@@ -319,6 +334,7 @@ fn main() -> int {
 | `read_file(String path) -> Option[String]` | 读取整个文件（失败 `None`） |
 | `write_file(String path, String data) -> bool` | 覆盖写入 |
 | `read_lines(String path) -> Option[ArrayList[String]]` | 按行拆分（`\r\n` 兼容；失败 `None`） |
+| `read_file_result(path) -> Result[String, IoError]` / `last_error(path) -> IoError` | 带详情的失败信息（类别 / 路径 / errno / 系统消息） |
 | `append_file` / `remove_file` / `copy_file` / `rename_file` | 追加 / 删除 / 复制 / 重命名（返回 bool） |
 | `is_dir` / `is_file` / `mkdir` / `rmdir` | 类型判断与目录创建 / 删除 |
 | `mtime(String path) -> Option[int]` / `size(String path) -> Option[int]` | 修改时间（Unix 秒）/ 字节数 |
@@ -447,10 +463,11 @@ struct LinkedList[T] {
 |---|---|
 | `HashSet::new[K]()` / `HashSet::with_capacity[K](n)` | 空集合 / 预分配槽位 |
 | `s.insert(k) -> bool` / `s.contains(k) -> bool` / `s.remove(k) -> bool` / `s.take(k) -> Option[K]` | 插入 / 包含 / 删除 / 删除并返回 |
-| `s.to_list() -> ArrayList[K]` | 所有元素（浅拷贝） |
+| `s.to_list() -> ArrayList[K]` / `s.sorted_list() -> ArrayList[K]`（`K: Ord`） | 所有元素 / 升序元素（浅拷贝） |
 | `s.for_each(Fn(K))` / `s.fold[U](init, Fn(U, K) -> U)` | 遍历 / 折叠 |
 | `s.retain(Fn(K) -> bool)` | 原地保留 |
 | `s.union(other)` / `s.intersection(other)` / `s.difference(other)` | 并 / 交 / 差（新集合） |
+| `s.remove_all(other)` / `s.retain_all(other)` | 原地差集 / 原地交集 |
 | `s.is_subset_of(other)` / `s.is_superset_of(other) -> bool` | 子集 / 超集判断 |
 | `s.any/all(Fn(K) -> bool)` / `s.count(...) -> usize` / `s.find(...) -> Option[K]` | 谓词族 |
 | `s.clear()` / `s.into_iter()` / `s.len()` / `s.is_empty()` / `s.to_string()` | 清空 / 迭代 / 长度 / 空判断 / 字符串形式 |
@@ -480,6 +497,7 @@ struct LinkedList[T] {
 | `Iterator[T]` 接口 | `fn next(ref mut self) -> Option[T]`；接口形参走虚调用 |
 | `MapIter::new(it, f)` / `FilterIter::new(it, pred)` | 映射 / 过滤 |
 | `TakeIter::new(it, n)` / `EnumerateIter::new(it)` / `ZipIter::new(a, b)` | 取前 n 个 / 带下标 / 逐对 |
+| `it.map(f)` / `it.filter(p)` / `it.take(n)` / `it.enumerate()` / `it.zip(other)` | 自由函数形式（方法语法链，注意 #189 冲突） |
 
 `Pair[A, B] { first, second }` 用于 zip / enumerate 的元素；适配器可任意嵌套。
 

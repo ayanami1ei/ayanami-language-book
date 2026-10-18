@@ -87,6 +87,45 @@ if t.contains(1) { /* ... */ }
 - 移动语义、作用域结束递归释放；`clone` 深拷贝 pointee；
 - 没有裸 `null`：空值用 `Option[Ptr[T]]`。
 
+## 引用协议与 Arena
+
+编译器按**方法形态**识别“引用协议”：任何类型只要有
+
+```ayanami
+fn get(ref self) -> ref T
+fn get_mut(ref mut self) -> ref mut T   // 可选
+```
+
+就支持字段/方法自动解引用（`p.x` ≡ `p.get().x`），`Ptr[T]`、`ref T`、`*T` 都是它的实现；
+协议调用在 release 下会内联为裸访问（零开销，objdump 中 getter 调用为 0）。
+
+基于协议可以在安全代码里实现 **arena + 句柄**（稳定地址、批量释放，适合图 / 双向链表）：
+
+```ayanami
+#[copy]
+struct Idx {
+    usize v
+}
+
+struct Arena[T] {
+    [Ptr[T]] data
+    usize len
+    usize cap
+}
+
+impl[T] Arena[T] {
+    fn alloc(ref mut self, T v) -> Idx { /* Ptr::new(v) 存入 data，返回新下标 */ }
+    fn get(ref self, Idx i) -> ref T { /* 越界句柄 panic 101 */ }
+}
+```
+
+- arena 拥有全部节点，句柄（`#[copy]` 结构体）不拥有节点，可自由复制；
+- 越界句柄在运行时 panic（退出码 101，与数组越界一致）；
+- 自引用结构、图、双向链表都用「arena + 句柄」表达，不引入 RC/GC；
+- 自定义解析器（ID → 句柄 → 节点）遵循同一协议（`resolve` 方法形态）。
+
+完整设计见主仓 `docs/reference-model.md`。
+
 ## 指针算术、volatile 与 reinterpret
 
 ```ayanami

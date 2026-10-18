@@ -60,6 +60,29 @@ impl Point {
 `struct S { int union }`、`S { union = 1 }`、模式 `S { union = u }`。
 变量名与顶层函数名仍必须是标识符；`union`、`move`、`clone`、`static` 等保留字仅在成员位置可作名字。
 
+## `#[copy]`：trivial 结构体
+
+默认结构体是移动语义。用 `#[copy]` 可以把只含 trivial 字段（基元 / 引用 / 指针 / 已登记的
+`#[copy]` 结构体）的结构体标记为 Copy，赋值与传参自由复制：
+
+```ayanami
+#[copy]
+struct Idx {
+    usize v
+}
+
+fn take(Idx i) -> usize { return i.v }
+
+fn main() -> int {
+    a = Idx { v = 3usize }
+    b = a              // Copy：a 仍可用
+    c = take(a)        // 传参不移动
+    return 0
+}
+```
+
+这适合句柄类类型（如 arena 的 `Idx`）。`#[copy]` 是 opt-in，不影响普通结构体的移动语义。
+
 ## 结构体参数与返回值
 
 结构体可以作为函数参数传递，也可以作为返回值。当结构体作为参数传入时，根据接收者的类型不同，会发生不同的行为：
