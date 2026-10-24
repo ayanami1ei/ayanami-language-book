@@ -16,6 +16,9 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `time`：时间（`now_millis` / `now_unix`）
 - `env`：命令行参数与环境变量
 - `fs`：文件读写
+- `sync` / `thread` / `channel`：并发原语、线程与通道（见第 19 章）
+- `alloc`：全局分配器接口（`Allocator` / `DefaultAllocator`）
+- `macros`：TokenStream 宏 API（实验）
 - `option`：`Option[T]`（`std` 也会导入）
 - `num`：显式溢出算术（`wrapping_*` / `saturating_*` / `checked_*` / `overflowing_*`）
 - `eq` / `sort`：`Eq` 接口与排序（`Ord` 接口）

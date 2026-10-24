@@ -341,6 +341,35 @@ fn main() -> int {
 | `list_dir(String path) -> Option[ArrayList[String]]` | 目录项（不含 `.` / `..`） |
 | `copy_tree(String src, String dst) -> int` | 递归复制目录树（返回文件数；失败 -1） |
 
+## sync / thread / channel 模块
+
+并发原语与线程（详见第 19 章）：
+
+| 模块 | API |
+|---|---|
+| `sync` | `AtomicInt`（`load/store/swap/fetch_*/compare_exchange`）、`fence` / `cpu_relax`；`Mutex[T]`（`with_lock`/`try_with_lock`/`lock`/`unlock`/`data`）；`RwLock[T]`（`with_read`/`with_write`，写者优先）；`Barrier`、`Once`、`Condvar` |
+| `thread` | `Thread::spawn(Fn() -> void)` / `t.join()` / `current_id()` / `yield_now()` |
+| `channel` | `Channel::new[T]()` / `new_bounded[T](cap)`；`send` / `recv` / `recv_opt` / `try_recv` / `close` |
+
+## alloc 模块
+
+```ayanami
+interface Allocator {
+    fn alloc(ref self, usize size) -> usize;
+    fn free(ref self, usize addr);
+}
+
+struct DefaultAllocator { }
+```
+
+全局分配器可在程序中导出同名 `#[extern]` 弱符号覆盖（`__ayanami_unique_alloc/free`），
+整个程序（含编译器生成的分配）都会走自定义实现；`live_allocs()` 用于诊断。
+
+## macros 模块
+
+`import "macros"` 提供 TokenStream 宏的 std 侧 API（`Span` / `TokenStream` / 诊断辅助），
+配合编译器的 token 宏（`#[macro(tokens)]`）使用；详见第 15 章与主仓 `docs/macros.md`。
+
 ## test 模块
 
 `import "test"` 提供测试框架：`#[test]` / `#[should_panic]` 标注与

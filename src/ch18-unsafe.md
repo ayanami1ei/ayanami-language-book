@@ -193,4 +193,4 @@ unsafe {
 - `Ptr[T]` 是安全拥有指针，表达树/递归结构；
 - union、reinterpret、volatile、`get_unchecked` 都通过 unsafe 显式标注风险。
 
-下一章是全书收官：用递归下降解析器写一个表达式计算器。
+下一章我们学习并发与异步，然后进入全书收官项目。

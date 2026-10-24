@@ -137,6 +137,34 @@ fn id(int x) -> int { return x }
 
 默认情况下，所有契约标注都会在运行时被验证。你可以通过设置环境变量 `AYANAMI_CHECKS=0` 来关闭这些检查，此时编译器会将 `requires` 和 `ensures` 转换为 LLVM 的 `assume` 指令。
 
+## 环境注入（`env::`）
+
+能力（分配器、异步运行时、日志等）通过**环境**隐式传入：声明处用泛型 bound，使用处不写泛型。
+
+```ayanami
+import "alloc"
+
+fn alloc_free[E: Allocator](usize n) -> usize {
+    p = env::allocator.alloc(n)
+    env::allocator.free(p)
+    return 1usize
+}
+
+#[env::allocator(a)]
+fn run() -> int {
+    a = DefaultAllocator { }
+    return alloc_free(8usize) as int
+}
+```
+
+- 能力键 = 接口基名小写（`Allocator` → `env::allocator`，`Logger` → `env::logger`）；
+- 提供者：`#[env::allocator(v)]` 标注在函数或块上，**最近者胜**，出块恢复；
+- 需求沿泛型 bound 自动传播；显式泛型实参优先（`alloc_free[DefaultAllocator](8)`）；
+- 可以同时注入多个能力（多个 `#[env::…]` 标注）；用户自定义能力只需定义普通接口。
+
+> 环境注入是编译期解析 + 单态化，没有运行时查找。std 的 `alloc` 模块提供 `Allocator` /
+> `DefaultAllocator`；全局分配器还可以在程序里导出同名 `#[extern]` 弱符号覆盖（见附录 A）。
+
 ## 效应标注
 
 效应标注用于描述函数的行为特征，例如是否涉及 I/O、内存分配或抛出异常等。它们有助于编译器进行更精确的优化和错误检测。

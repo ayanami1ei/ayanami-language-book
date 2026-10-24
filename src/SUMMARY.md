@@ -20,5 +20,6 @@
 - [第 16 章 工具链与发布](ch16-toolchain.md)
 - [第 17 章 测试](ch17-testing.md)
 - [第 18 章 unsafe 与底层编程](ch18-unsafe.md)
-- [第 19 章 综合项目：表达式计算器](ch19-project.md)
+- [第 19 章 并发与异步](ch19-concurrency-async.md)
+- [第 20 章 综合项目：表达式计算器](ch20-project.md)
 - [附录 A：标准库 API 参考](appendix-stdlib.md)

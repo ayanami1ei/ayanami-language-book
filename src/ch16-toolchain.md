@@ -152,6 +152,9 @@ mandelbrot 上三个 LLVM 后端（Ayanami / Rust / Zig）都自动向量化了�
 各内核的测点、规模、校验和与读表要点见 `bench/KERNELS.md`；历史趋势见 `bench/RESULTS.md`；
 优化设计（debug/release 双模式、属性推断与 LTO）见 `docs/optimization.md`。
 
+编译器还带**整程序增量缓存**（默认开启，`AYANAMI_INCREMENTAL` 控制）：缓存键包含编译器指纹与
+所安装 std 的内容，包写入时内容去重，重复构建会跳过未变化的工作。
+
 ## 16.7 编译管线回顾
 
 ```text
