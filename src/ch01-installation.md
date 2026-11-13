@@ -10,7 +10,7 @@ Ayanami 目前支持 **Linux x86_64**，要求 glibc ≥ 2.39（Ubuntu 24.04 / D
 从 [GitHub Releases](https://github.com/ayanami1ei/Ayanami-language/releases) 下载发布包：
 
 ```bash
-tar xzf ayanami-0.6.7-linux-x86_64.tar.gz
+tar xzf ayanami-0.6.8-linux-x86_64.tar.gz
 cd install
 ```
 
@@ -107,7 +107,7 @@ cd my_project
 ```toml
 [package]
 name = "my_project"
-version = "0.6.7"
+version = "0.6.8"
 
 [build]
 target = "executable"

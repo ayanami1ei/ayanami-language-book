@@ -31,7 +31,7 @@
 ```toml
 [package]
 name = "my_project"
-version = "0.6.7"
+version = "0.6.8"
 
 # 可选：编译期 feature 开关（#[cfg(feature = "x")]）
 features = ["a", "b"]
@@ -88,10 +88,10 @@ ayanami defs src/main.aya
 
 ## 16.4 VSCode 插件
 
-发布包中带有 `ayanami-0.6.7.vsix`：
+发布包中带有 `ayanami-0.6.8.vsix`：
 
 ```bash
-code --install-extension ayanami-0.6.7.vsix
+code --install-extension ayanami-0.6.8.vsix
 ```
 
 插件提供语法高亮、结构体字段补全、方法补全、变量类型推断、
