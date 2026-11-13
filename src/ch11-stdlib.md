@@ -19,6 +19,10 @@ Ayanami 语言内置了丰富的标准库模块，帮助你快速构建程序。
 - `sync` / `thread` / `channel`：并发原语、线程与通道（见第 19 章）
 - `alloc`：全局分配器接口（`Allocator` / `DefaultAllocator`）
 - `macros`：TokenStream 宏 API（实验）
+- `json` / `csv` / `ini` / `url`：数据格式解析与编码
+- `encoding` / `sha256`：十六进制/Base64 与 SHA-256
+- `path` / `process`：路径字符串工具与进程控制
+- `fmt`：编译期格式化宏 `#format(...)`
 - `option`：`Option[T]`（`std` 也会导入）
 - `num`：显式溢出算术（`wrapping_*` / `saturating_*` / `checked_*` / `overflowing_*`）
 - `eq` / `sort`：`Eq` 接口与排序（`Ord` 接口）
@@ -67,6 +71,7 @@ u = try_read_uint()         // 严格解析 usize（负数/失败 None）
 ```
 
 `try_read_float()` / `try_read_bool()` 是对应的严格版本，返回 `Option`。
+`eprint` / `eprintln` 把输出写到 **stderr**（`eprintln()` 只输出换行）。
 
 ## 数学函数（math）
 
@@ -100,7 +105,8 @@ fn main() -> int {
 ```
 
 此外还提供 `sign`（符号）、`gcd` / `lcm` / `is_prime`（整数），
-`exp` / `ln` / `log10` / `round` / `trunc` / `pi` / `sin` / `cos` / `tan` / `atan2`（浮点），
+`exp` / `ln` / `log10` / `log2` / `log(x, base)` / `round` / `trunc` / `cbrt` / `hypot` /
+`pi` / `sin` / `cos` / `tan` / `asin` / `acos` / `atan` / `atan2` / `sinh` / `cosh` / `tanh`（浮点），
 以及方法 `n.is_even()` / `n.is_odd()`、`f.is_nan()`。
 
 > 浮点数学（`sqrt` / `exp` / `ln` / 三角函数等）现为**纯 Ayanami 实现**（牛顿迭代 / 级数 / 范围归约），
@@ -162,7 +168,8 @@ fn main() -> int {
 字符串与集合的长度、下标参数使用 `usize`（无符号 64 位，`usize ≡ u64`）；索引处写任意整数类型都会被统一转换，所以 `a[1u8]`、`s[i]` 都可以直接使用。
 
 `trim_start` / `trim_end` 只去掉一侧空白；`remove_prefix` / `remove_suffix` 有则去掉、无则返回拷贝；
-`is_whitespace` 判断整串是否全为空白，`count_char` 统计字符出现次数；
+`is_whitespace` 判断整串是否全为空白，`count_char` 统计字符出现次数，`last_index_of` 找最后一次子串位置；
+`to_string()` 是 `ref self`（返回副本，不消费原值）；
 字符串支持字典序比较（`<` `>` `<=` `>=`）；`split_whitespace` / `count` 见 `text` 模块。
 
 ### 格式化
@@ -326,8 +333,9 @@ a.min()                  // Option[int]：Some(1)
 a.binary_search(2)       // 1（要求已升序；未找到 -1）
 ```
 
-自由函数形式是 `sort(a)`，另有兼容包装 `sort_int(a)` / `sort_string(a)`。自定义类型只要提供
-`cmp` 方法即满足 `Ord` 约束。
+自由函数形式是 `sort(a)`，另有兼容包装 `sort_int(a)` / `sort_string(a)`；
+自定义排序用 `a.sort_by((T x, T y) -> int { ... })`（比较器返回 `<0 / 0 / >0`）。
+自定义类型只要提供 `cmp` 方法即满足 `Ord` 约束。
 
 ### 哈希集合与哈希表
 
@@ -394,6 +402,7 @@ for x in a.into_iter() {
 | `TakeIter::new(it, n)` | 最多前 `n` 个 |
 | `EnumerateIter::new(it)` | 产出 `Pair[usize, T]`（下标从 0 起） |
 | `ZipIter::new(a, b)` | 逐对产出 `Pair[T, U]`，任一耗尽即结束 |
+| `SkipIter::new(it, n)` / `ChainIter::new(a, b)` | 跳过前 `n` 个 / 串联两个迭代器 |
 
 ```ayanami
 m = MapIter::new(a.into_iter(), (int x) -> int { return x * 10 })
@@ -404,11 +413,12 @@ total = 0
 for x in t { total = total + x }   // 30 + 40 = 70
 ```
 
-适配器也有自由函数形式，可用方法语法链式组合：
+适配器也有自由函数形式，可用方法语法链式组合；`collect()` 把迭代器收成 `ArrayList[T]`：
 
 ```ayanami
 for p in a.into_iter().enumerate() { /* p: Pair[usize, int] */ }
 for p in a.into_iter().take(2usize).zip(b.into_iter()) { /* ... */ }
+items = a.into_iter().skip(1usize).collect()   // ArrayList[int]
 ```
 
 > 注：`map` / `filter`（以及导入 `hashset` 时的 `take`）与同名方法存在解析冲突（编译器 #189），
@@ -476,9 +486,13 @@ import "time"
 t0 = now_millis()      // 单调毫秒，适合计时/差值
 now_micros()           // 单调微秒
 now_unix()             // Unix 秒（墙上时钟）
+now_unix_ms()          // Unix 毫秒
 elapsed_ms(t0)         // 自 t0 起的毫秒差
 format_ms(3723000)     // "01:02:03.000"
-sleep_ms(100)          // 睡眠 100 毫秒（<= 0 直接返回）
+format_unix(1700000000)  // "2023-11-14 22:13:20"（UTC）
+format_date(1700000000)  // "2023-11-14"
+sleep_ms(100)          // 睡眠 100 毫秒
+sleep_us(500)          // 睡眠 500 微秒
 ```
 
 ## 命令行参数与环境变量（env）
@@ -508,9 +522,105 @@ lines = read_lines("/tmp/a.txt")   // Option[ArrayList[String]]
 
 `read_file` / `read_lines` 返回 `Option`，`write_file` 返回是否成功；按字节读写（二进制安全）。
 此外还有文件管理：`append_file` / `remove_file` / `copy_file` / `rename_file`、
-`is_dir` / `is_file` / `mkdir` / `rmdir` / `mtime` / `size` / `list_dir` / `copy_tree`。
+`is_dir` / `is_file` / `mkdir` / `rmdir` / `mtime` / `size` / `list_dir` / `copy_tree`、
+`symlink` / `read_link` / `canonicalize`、`current_dir` / `set_current_dir`、
+`walk` / `walk_filtered` / `walk_ext`（递归遍历）。
 需要失败详情时用 `read_file_result(path) -> Result[String, IoError]` 与 `last_error(path)`，
 `IoError` 带类别（`NotFound` / `PermissionDenied` …）、路径、errno 与系统消息。
+
+## 数据格式与编码
+
+### JSON（json）
+
+```ayanami
+import "json"
+
+escaped = quote("say \"hi\"")
+v = parse("{\"x\": 1, \"name\": \"aya\"}").unwrap()
+x = v.get_int("x").unwrap_or(0)
+text = v.render_pretty()
+```
+
+`Json` 是枚举（`Null` / `Bool` / `Int` / `Float` / `Str` / `Array` / `Object`，对象保持插入顺序）；
+`parse` 严格解析，`render` / `render_pretty` 序列化；`escape` / `quote` / `unescape` 处理字符串转义
+（支持 `\uXXXX` 与代理对）。访问器有 `as_int` / `as_float` / `as_bool` / `as_str`、`get_int` / `get_str` 等、
+`len` / `key_at`。
+
+### CSV（csv）
+
+```ayanami
+import "csv"
+
+rows = parse("a,\"b,c\",d\n1,2,3")   // ArrayList[ArrayList[String]]
+text = encode(rows)
+```
+
+支持引号、转义与 CRLF。
+
+### INI（ini）
+
+```ayanami
+import "ini"
+
+c = parse("[server]\nhost = 127.0.0.1\nport = 8080\n")
+host = c.get(ref "server", ref "host").unwrap_or("")
+port = c.get_or(ref "server", ref "port", "80")
+```
+
+支持段、注释、重复键（后者覆盖）；`sections` / `keys` 保持首次出现顺序。
+
+### URL（url）
+
+```ayanami
+import "url"
+
+percent_encode(ref "a b&c")                  // "a%20b%26c"
+percent_decode(ref "a%20b").unwrap_or("")    // "a b"
+query_get(ref "?name=hello%20world", ref "name")  // Some("hello world")
+```
+
+`form_decode` 额外把 `+` 解码为空格。
+
+### 编码与摘要（encoding / sha256）
+
+```ayanami
+import "encoding"
+import "sha256"
+
+hex_encode("Hi")             // "4869"
+base64_encode("hello")       // "aGVsbG8="
+sha256_hex("abc")            // 64 位十六进制摘要
+```
+
+两者都是纯 Ayanami 实现（无外部依赖）。
+
+### 路径与进程（path / process）
+
+```ayanami
+import "path"
+import "process"
+
+normalize("a//b///c")                  // "a/b/c"
+join("/data", "x.txt")                 // "/data/x.txt"
+file_stem("/a/b/c.txt")                // "c"
+with_extension("/a/b/c.txt", "md")     // "/a/b/c.md"
+
+process::exit(2)                       // 以退出码 2 结束（返回 !）
+process::id() / process::parent_id()
+```
+
+### 格式化宏（fmt）
+
+```ayanami
+import "fmt"
+
+s = #format("x={} y={}", 1, 2)     // "x=1 y=2"
+h = #format("{:x}", 255)           // "ff"
+p = #format("[{:>5}]", 7)          // "[    7]"
+```
+
+`#format` 是编译期展开的格式化宏：`{}` 按 `ToString` 插入，支持宽度（`{:5}`）、对齐（`{:>5}`）、
+进制（`{:x}` / `{:X}` / `{:b}` / `{:o}`）；`{{` / `}}` 转义花括号。
 
 ## 总结
 

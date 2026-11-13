@@ -31,7 +31,7 @@
 ```toml
 [package]
 name = "my_project"
-version = "0.6.6"
+version = "0.6.7"
 
 # 可选：编译期 feature 开关（#[cfg(feature = "x")]）
 features = ["a", "b"]
@@ -49,8 +49,25 @@ path = "custom_runtime.c"
 ```
 
 - `[package]`：项目名与版本号；
-- `[build] target`：默认产物类型，可选 `executable`、`static-lib`、`dynamic-lib`；
+- `[build] target`：默认产物类型，可选 `executable`、`static-lib`、`dynamic-lib`、`object`；
 - `[build.targets]`：为单个源文件指定不同的产物类型。
+
+### 交叉目标与 freestanding
+
+```toml
+[build]
+target = "object"
+arch = "aarch64-none-elf"    # 可选：LLVM target triple
+freestanding = true          # 可选：只产出 .o；不链接 runtime.c/libc
+```
+
+- `freestanding = true` 强制 `target = "object"`，只生成 `build/<stem>.o`；
+- 不链接内置 `runtime.c` / 宿主 libc，不生成可执行文件或 PIE（静态重定位）；
+- `arch` 是 LLVM target triple（如 `aarch64-none-elf`），生成对应架构的可重定位对象；
+- 不 import std 时无需任何机器码标准库；导入的 std 会按目标重新编译 LIR，
+  未解析的运行时符号（分配器、panic 等）由内核 / 启动代码提供；
+- `ayanami run` 拒绝 freestanding / 交叉目标，请用自己的 linker script / loader 链接 `.o`；
+- `target = "static-lib"` + `arch` 可生成跨架构 `.a`（不链接 runtime）。
 
 `ayanami run`、`ayanami build`、`ayanami package` 在项目模式下都会读取这份配置。
 
@@ -71,10 +88,10 @@ ayanami defs src/main.aya
 
 ## 16.4 VSCode 插件
 
-发布包中带有 `ayanami-0.6.6.vsix`：
+发布包中带有 `ayanami-0.6.7.vsix`：
 
 ```bash
-code --install-extension ayanami-0.6.6.vsix
+code --install-extension ayanami-0.6.7.vsix
 ```
 
 插件提供语法高亮、结构体字段补全、方法补全、变量类型推断、

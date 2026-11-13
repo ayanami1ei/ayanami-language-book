@@ -19,6 +19,7 @@ Ayanami 标准库以预编译 `.lcl` 文件形式随编译器一同分发，使�
 | `read_float() -> float` / `try_read_float()` | 浮点行输入（宽松 / `Option`） |
 | `read_bool() -> bool` / `try_read_bool()` | 布尔行输入（宽松 / `Option`） |
 | `try_read_uint() -> Option[usize]` | 严格解析 `usize`（负数/失败 `None`） |
+| `eprint(ref String s)` / `eprintln(ref String s)` / `eprintln()` | 输出到 stderr |
 
 ```ayanami
 import "io";
@@ -52,7 +53,8 @@ fn main() -> int {
 ### 位操作（bitops 模块）
 
 `import "bitops"`：`popcount(int)`、`is_power_of_two(int)`、`leading_zeros(int)`、
-`trailing_zeros(int)`（`0` 的前导/尾随零为 64），纯 Ayanami 实现。
+`trailing_zeros(int)`（`0` 的前导/尾随零为 64），另有 `rotl` / `rotr`（循环移位）、
+`bit_length`、`reverse_bits`、`swap_bytes`、`next_power_of_two`；纯 Ayanami 实现。
 
 ### 显式溢出算术（num 模块）
 
@@ -79,6 +81,9 @@ fn main() -> int {
 | `floor(float x)` / `ceil(float x)` | 向下/向上取整 |
 | `exp(float x)` / `ln(float x)` / `log10(float x)` | e^x / 自然对数 / 常用对数 |
 | `pi() -> float` / `sin(x)` / `cos(x)` / `tan(x)` / `atan2(y, x)` | 圆周率与三角函数（弧度） |
+| `asin` / `acos` / `atan` | 反三角函数 |
+| `sinh` / `cosh` / `tanh` | 双曲函数 |
+| `log2(x)` / `log(x, base)` / `cbrt(x)` / `hypot(x, y)` | 对数、立方根、斜边 |
 | `round(float x)` / `trunc(float x)` | 四舍五入 / 向零截断 |
 | `f.is_nan()` | 是否 NaN（`impl float`） |
 
@@ -106,7 +111,9 @@ struct String {
 | `s.ne(ref String other) -> bool` | 不等比较（`!=`） |
 | `s.lt / gt / le / ge(ref String) -> bool` | 字典序比较（`<` `>` `<=` `>=`） |
 | `s.copy() -> String` | 深拷贝 |
-| `s.to_string() -> String` | 消费 self 并返回（ToString 接口） |
+| `s.to_string() -> String` | 返回副本（`ref self`，不消费原值；实现 `ToString`） |
+| `s.last_index_of(ref String) -> int` | 最后一次出现位置；未找到 -1（空 needle → len） |
+| `5usize.to_string()` / `42u8.to_string()` | 各整数宽度的十进制字符串（usize 即 u64） |
 | `42.to_string()` | int/float/char/bool → String |
 | `3.14159.to_fixed(2)` / `1234.5.to_sci(2)` | 定点 / 科学计数法格式化 |
 | `255.to_hex()` / `to_hex_upper()` / `to_bin()` / `to_oct()` | 整数进制格式化 |
@@ -306,10 +313,12 @@ fn main() -> int {
 |---|---|
 | `now_millis() -> int` | 单调毫秒（适合计时/差值） |
 | `now_micros() -> int` | 单调微秒 |
-| `now_unix() -> int` | Unix 秒（墙上时钟） |
+| `now_unix() -> int` / `now_unix_ms() -> int` | Unix 秒 / 毫秒（墙上时钟） |
 | `format_ms(int ms) -> String` | 毫秒格式化 `HH:MM:SS.mmm` |
+| `format_unix(int unix)` / `format_date(int unix) -> String` | UTC `YYYY-MM-DD HH:MM:SS` / `YYYY-MM-DD` |
+| `DateTime::from_unix(int unix) -> DateTime` | UTC 年月日时分秒 + 星期分解 |
 | `elapsed_ms(int start) -> int` | 自 `start`（来自 `now_millis`）起的毫秒差 |
-| `sleep_ms(int ms)` | 睡眠 `ms` 毫秒（`<= 0` 直接返回） |
+| `sleep_ms(int ms)` / `sleep_us(int us)` | 睡眠毫秒 / 微秒 |
 
 ## env 模块
 
@@ -340,6 +349,9 @@ fn main() -> int {
 | `mtime(String path) -> Option[int]` / `size(String path) -> Option[int]` | 修改时间（Unix 秒）/ 字节数 |
 | `list_dir(String path) -> Option[ArrayList[String]]` | 目录项（不含 `.` / `..`） |
 | `copy_tree(String src, String dst) -> int` | 递归复制目录树（返回文件数；失败 -1） |
+| `symlink` / `read_link` / `canonicalize` | 符号链接创建 / 读取 / 规范绝对路径 |
+| `current_dir()` / `set_current_dir(path)` | 当前工作目录 / 切换目录 |
+| `walk(root)` / `walk_filtered(root, Fn(ref String) -> bool)` / `walk_ext(root, ext)` | 递归遍历文件（全部 / 谓词过滤 / 后缀过滤） |
 
 ## sync / thread / channel 模块
 
@@ -479,6 +491,7 @@ struct LinkedList[T] {
 | 入口 | 说明 |
 |---|---|
 | `a.sort()` / `sort(a)` | 泛型升序（稳定插入排序） |
+| `a.sort_by(Fn(T, T) -> int)` | 自定义比较器（返回 `<0 / 0 / >0`） |
 | `sort_int(a)` / `sort_string(a)` | 兼容包装 |
 | `a.min()` / `a.max() -> Option[T]` | 最小 / 最大元素（空表 `None`） |
 | `a.is_sorted() -> bool` | 是否已升序 |
@@ -527,8 +540,81 @@ struct LinkedList[T] {
 | `MapIter::new(it, f)` / `FilterIter::new(it, pred)` | 映射 / 过滤 |
 | `TakeIter::new(it, n)` / `EnumerateIter::new(it)` / `ZipIter::new(a, b)` | 取前 n 个 / 带下标 / 逐对 |
 | `it.map(f)` / `it.filter(p)` / `it.take(n)` / `it.enumerate()` / `it.zip(other)` | 自由函数形式（方法语法链，注意 #189 冲突） |
+| `it.skip(n)` / `a.chain(b)` / `it.collect()` | 跳过 / 串联 / 收集为 `ArrayList[T]` |
 
 `Pair[A, B] { first, second }` 用于 zip / enumerate 的元素；适配器可任意嵌套。
+
+## json 模块
+
+`import "json"`
+
+| API | 说明 |
+|---|---|
+| `escape` / `quote` / `unescape(ref String) -> Option[String]` | 字符串转义 / 加引号 / 反转义（`\uXXXX` 与代理对） |
+| `Json::{Null, Bool, Int, Float, Str, Array, Object}` | 值模型（对象保持插入顺序） |
+| `JsonField::new(key, value)` | 对象成员 |
+| `parse(ref String) -> Option[Json]` | 严格解析 |
+| `v.render()` / `v.render_pretty()` | 序列化 / 缩进序列化（按引用遍历） |
+| `is_null` / `as_int` / `as_float` / `as_bool` / `as_str` | 标量访问（类型不符 → None） |
+| `len` / `key_at` / `get_int` / `get_float` / `get_bool` / `get_str` | 数组 / 对象访问 |
+
+## csv 模块
+
+`import "csv"`
+
+| 函数 | 说明 |
+|---|---|
+| `parse(ref String) -> ArrayList[ArrayList[String]]` | 解析为行 × 字段（引号 / 转义 / CRLF） |
+| `encode(ref ArrayList[ArrayList[String]]) -> String` | 生成 CSV 文本 |
+
+## ini 模块
+
+`import "ini"`
+
+| API | 说明 |
+|---|---|
+| `parse(ref String) -> Ini` | 解析 INI（段 / 注释 / 重复键后者覆盖） |
+| `len()` / `get(section, key)` / `get_or(...)` / `has(...)` | 查询 |
+| `sections()` / `keys(section)` | 段 / 键列表（首次出现顺序） |
+
+## url 模块
+
+`import "url"`
+
+| 函数 | 说明 |
+|---|---|
+| `percent_encode(ref String)` / `percent_decode(ref String) -> Option[String]` | 百分号编解码（RFC 3986） |
+| `form_decode(ref String) -> Option[String]` | 表单解码（`+` → 空格） |
+| `query_get(ref String query, ref String key) -> Option[String]` | 查询串取值 |
+
+## encoding 模块
+
+`import "encoding"`：`hex_encode` / `hex_encode_upper` / `hex_decode`（Option）、
+`base64_encode` / `base64_decode`（Option，严格校验）。
+
+## sha256 模块
+
+`import "sha256"`：`sha256_bytes(ref String) -> String`（32 字节）、
+`sha256_hex(ref String) -> String`（64 字符小写）；纯 Ayanami 实现。
+
+## path 模块
+
+`import "path"`（参数 / 返回均为 `String`）：`normalize` / `join` / `basename` / `dirname` /
+`extension` / `is_absolute` / `file_stem` / `with_extension`。
+
+## process 模块
+
+`import "process"`
+
+| API | 说明 |
+|---|---|
+| `process::exit(int code) -> !` / `process::exit_ok() -> !` | 退出进程（不返回） |
+| `process::id()` / `process::parent_id() -> int` | 进程 / 父进程 ID |
+
+## fmt 模块
+
+`import "fmt"`：编译期格式化宏 `#format("...", args...)`，支持 `{}`、宽度 / 对齐、
+进制（`{:x}` / `{:b}` / `{:o}`）与 `{{` / `}}` 转义。
 
 ## mir 模块（实验性）
 

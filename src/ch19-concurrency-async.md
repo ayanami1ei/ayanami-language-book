@@ -126,12 +126,32 @@ fn block_on[F: Future[int]](ref mut F f) -> int {
 }
 ```
 
-- `#[async]` 支持自由函数、方法与泛型；返回类型写业务类型 `T`；
-- `await expr` 是前缀表达式，只能在 async 上下文使用；支持连续多个挂起点，载荷可为
-  `int` / `float` / `bool` / `String`；
+- `#[async]` 目前支持**自由函数**（方法 / 泛型上的 `#[async]` 尚未支持）；返回类型写业务类型 `T`；
+- `await expr` 是前缀表达式，只能在 async 上下文使用；必须写成 `x = await g(...)` 的赋值形式
+  （表达式级 await 尚未支持）；载荷可为 `int` / `float` / `bool` / `String`；
+- **通用 CFG**（默认启用）：`await` 可以出现在任意嵌套的 `if / elif / else`、`while` 中，
+  支持循环内 `break` / `continue`、每个分支多个 `await`、`await` 之间夹杂同步语句、
+  以及分支 / 循环之后的连续 `await`；
+- 仍不支持：`ref` 跨 `await`、`match` / `for` / `unsafe` 内 `await`、非默认初始化的局部变量；
 - 状态机是普通值：可移动、装箱、存字段、传参；实现上复用枚举布局（tag + 变体载荷）；
-- 跨 `await` 不持有 `ref`（自引用需要固定地址，当前不支持）；
-- 取消 = drop 状态机；执行器不绑定编译器，可替换（后续可经 `env::runtime` 注入）。
+- 取消 = drop 状态机；执行器不绑定编译器，可替换（后续可经 `env::runtime` 注入）；
+- 设置 `AYANAMI_ASYNC_CFG=0` 可回退到旧的分形状展开（调试用）。
+
+例如循环里逐次 `await`：
+
+```ayanami
+#[async]
+fn sum_to(int n) -> int {
+    total = 0
+    i = 0
+    while i < n {
+        v = await inc(i)
+        total = total + v
+        i = i + 1
+    }
+    return total
+}
+```
 
 完整设计见主仓 `docs/async.md` 与 `docs/sync-blocks.md`。
 
